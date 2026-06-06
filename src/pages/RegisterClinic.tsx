@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, ProgressBar } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
+import { PROCEDURES_LIST, BRAZIL_STATES } from '../utils/constants';
 import type { Clinic } from '../types';
 
 export const RegisterClinic = () => {
@@ -18,36 +19,53 @@ export const RegisterClinic = () => {
     email: '',
     phone: '',
     password: '',
+    confirmPassword: '',
     street: '',
     number: '',
     city: '',
     state: '',
+    zipCode: '',
+    neighborhood: '',
     description: '',
+    otherProcedure: '',
     procedures: [] as string[]
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (formData.password !== formData.confirmPassword) {
+      return setError('As senhas não coincidem');
+    }
+
     try {
+      setError('');
       setLoading(true);
+
       const { user } = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       await updateProfile(user, { displayName: formData.name });
 
-      const clinicData: Omit<Clinic, 'id'> = {
+      // Processar procedimentos (incluindo "Outros")
+      const finalProcedures = formData.procedures.includes('Outros') && formData.otherProcedure
+        ? [...formData.procedures.filter(p => p !== 'Outros'), formData.otherProcedure]
+        : formData.procedures.filter(p => p !== 'Outros');
+
+      const clinicData = {
         name: formData.name,
         cnpj: formData.cnpj,
         email: formData.email,
         phone: formData.phone,
         status: 'pending',
+        approved: false,
         address: {
           street: formData.street,
           number: formData.number,
           city: formData.city,
           state: formData.state,
-          zipCode: '',
-          neighborhood: ''
+          zipCode: formData.zipCode,
+          neighborhood: formData.neighborhood
         },
-        procedures: formData.procedures,
+        procedures: finalProcedures,
         description: formData.description,
         rating: 0,
         reviewCount: 0,
@@ -55,7 +73,8 @@ export const RegisterClinic = () => {
         score: 0,
         images: [],
         plan: 'basic',
-        userId: user.uid
+        ownerId: user.uid,
+        createdAt: Timestamp.now()
       };
 
       await setDoc(doc(db, 'clinics', user.uid), clinicData);
@@ -63,25 +82,34 @@ export const RegisterClinic = () => {
         uid: user.uid,
         email: formData.email,
         displayName: formData.name,
-        type: 'clinic',
+        role: 'clinic',
+        clinicId: user.uid,
         createdAt: new Date()
       });
 
-      navigate('/dashboard/clinic');
-    } catch (err) {
-      setError('Erro ao cadastrar clínica. Verifique os dados.');
+      navigate('/questionario');
+    } catch (err: any) {
+      console.error('Erro no cadastro:', err);
+      setError(err.message || 'Erro ao cadastrar clínica. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  const proceduresList = ['Botox', 'Preenchimento', 'Limpeza de Pele', 'Laser', 'Peeling', 'Microagulhamento'];
+  const toggleProcedure = (proc: string) => {
+    setFormData(prev => ({
+      ...prev,
+      procedures: prev.procedures.includes(proc)
+        ? prev.procedures.filter(p => p !== proc)
+        : [...prev.procedures, proc]
+    }));
+  };
 
   return (
-    <Container className="py-5 mt-5">
+    <Container className="py-5">
       <Row className="justify-content-center">
         <Col md={8}>
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-sm">
             <Card.Body className="p-5">
               <div className="text-center mb-4">
                 <i className="bi bi-building-add text-olive fs-1"></i>
@@ -89,9 +117,9 @@ export const RegisterClinic = () => {
                 <p className="text-muted">Junte-se à rede premium de estética</p>
               </div>
 
-              <ProgressBar now={(step / 3) * 100} className="mb-4" variant="olive" />
+              <ProgressBar now={(step / 3) * 100} className="mb-4" variant="gold" />
 
-              {error && <Alert variant="danger" className="rounded-3">{error}</Alert>}
+              {error && <Alert variant="danger" className="rounded-4">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
                 {step === 1 && (
@@ -100,7 +128,7 @@ export const RegisterClinic = () => {
                     <Row>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Razão Social</Form.Label>
+                          <Form.Label className="fw-medium">Razão Social *</Form.Label>
                           <Form.Control
                             type="text"
                             value={formData.name}
@@ -112,9 +140,10 @@ export const RegisterClinic = () => {
                       </Col>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>CNPJ</Form.Label>
+                          <Form.Label className="fw-medium">CNPJ *</Form.Label>
                           <Form.Control
                             type="text"
+                            placeholder="00.000.000/0000-00"
                             value={formData.cnpj}
                             onChange={(e) => setFormData({...formData, cnpj: e.target.value})}
                             className="rounded-pill"
@@ -126,9 +155,10 @@ export const RegisterClinic = () => {
                     <Row>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>E-mail</Form.Label>
+                          <Form.Label className="fw-medium">E-mail *</Form.Label>
                           <Form.Control
                             type="email"
+                            placeholder="contato@clinica.com"
                             value={formData.email}
                             onChange={(e) => setFormData({...formData, email: e.target.value})}
                             className="rounded-pill"
@@ -138,9 +168,10 @@ export const RegisterClinic = () => {
                       </Col>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Telefone</Form.Label>
+                          <Form.Label className="fw-medium">Telefone *</Form.Label>
                           <Form.Control
                             type="tel"
+                            placeholder="(11) 99999-9999"
                             value={formData.phone}
                             onChange={(e) => setFormData({...formData, phone: e.target.value})}
                             className="rounded-pill"
@@ -149,26 +180,45 @@ export const RegisterClinic = () => {
                         </Form.Group>
                       </Col>
                     </Row>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Senha</Form.Label>
-                      <Form.Control
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                        className="rounded-pill"
-                        required
-                      />
-                    </Form.Group>
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-medium">Senha *</Form.Label>
+                          <Form.Control
+                            type="password"
+                            placeholder="Mínimo 6 caracteres"
+                            value={formData.password}
+                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                            className="rounded-pill"
+                            required
+                            minLength={6}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-medium">Confirmar Senha *</Form.Label>
+                          <Form.Control
+                            type="password"
+                            placeholder="Repita a senha"
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                            className="rounded-pill"
+                            required
+                          />
+                        </Form.Group>
+                      </Col>
+                    </Row>
                   </>
                 )}
 
                 {step === 2 && (
                   <>
-                    <h5 className="font-serif text-olive mb-3">Endereço</h5>
+                    <h5 className="font-serif text-olive mb-3">Endereço Completo</h5>
                     <Row>
                       <Col md={8}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Rua</Form.Label>
+                          <Form.Label className="fw-medium">Rua *</Form.Label>
                           <Form.Control
                             type="text"
                             value={formData.street}
@@ -180,7 +230,7 @@ export const RegisterClinic = () => {
                       </Col>
                       <Col md={4}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Número</Form.Label>
+                          <Form.Label className="fw-medium">Número *</Form.Label>
                           <Form.Control
                             type="text"
                             value={formData.number}
@@ -194,7 +244,33 @@ export const RegisterClinic = () => {
                     <Row>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Cidade</Form.Label>
+                          <Form.Label className="fw-medium">Bairro *</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={formData.neighborhood}
+                            onChange={(e) => setFormData({...formData, neighborhood: e.target.value})}
+                            className="rounded-pill"
+                            required
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-medium">CEP</Form.Label>
+                          <Form.Control
+                            type="text"
+                            placeholder="00000-000"
+                            value={formData.zipCode}
+                            onChange={(e) => setFormData({...formData, zipCode: e.target.value})}
+                            className="rounded-pill"
+                          />
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label className="fw-medium">Cidade *</Form.Label>
                           <Form.Control
                             type="text"
                             value={formData.city}
@@ -206,7 +282,7 @@ export const RegisterClinic = () => {
                       </Col>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Estado</Form.Label>
+                          <Form.Label className="fw-medium">Estado *</Form.Label>
                           <Form.Select
                             value={formData.state}
                             onChange={(e) => setFormData({...formData, state: e.target.value})}
@@ -214,9 +290,9 @@ export const RegisterClinic = () => {
                             required
                           >
                             <option value="">Selecione</option>
-                            <option value="SP">São Paulo</option>
-                            <option value="RJ">Rio de Janeiro</option>
-                            <option value="MG">Minas Gerais</option>
+                            {BRAZIL_STATES.map(state => (
+                              <option key={state.value} value={state.value}>{state.label}</option>
+                            ))}
                           </Form.Select>
                         </Form.Group>
                       </Col>
@@ -226,55 +302,95 @@ export const RegisterClinic = () => {
 
                 {step === 3 && (
                   <>
-                    <h5 className="font-serif text-olive mb-3">Especialidades</h5>
+                    <h5 className="font-serif text-olive mb-3">Especialidades e Serviços</h5>
                     <Form.Group className="mb-3">
-                      <Form.Label>Descrição da Clínica</Form.Label>
+                      <Form.Label className="fw-medium">Descrição da Clínica *</Form.Label>
                       <Form.Control
                         as="textarea"
                         rows={3}
+                        placeholder="Descreva sua clínica, diferenciais, experiência..."
                         value={formData.description}
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
                         className="rounded-4"
                         required
                       />
                     </Form.Group>
+                    
                     <Form.Group className="mb-3">
-                      <Form.Label>Procedimentos Oferecidos</Form.Label>
-                      <div className="d-flex flex-wrap gap-2">
-                        {proceduresList.map(proc => (
-                          <Form.Check
+                      <Form.Label className="fw-medium">Procedimentos Oferecidos *</Form.Label>
+                      <div className="d-flex flex-wrap gap-3">
+                        {PROCEDURES_LIST.map(proc => (
+                          <Button
                             key={proc}
-                            type="checkbox"
-                            label={proc}
-                            checked={formData.procedures.includes(proc)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({...formData, procedures: [...formData.procedures, proc]});
-                              } else {
-                                setFormData({...formData, procedures: formData.procedures.filter(p => p !== proc)});
-                              }
-                            }}
-                            className="user-select-none"
-                          />
+                            variant={formData.procedures.includes(proc) ? 'olive' : 'outline-olive'}
+                            className="rounded-pill"
+                            onClick={() => toggleProcedure(proc)}
+                          >
+                            {proc === 'Outros' && <i className="bi bi-plus-circle me-2"></i>}
+                            {proc}
+                          </Button>
                         ))}
                       </div>
                     </Form.Group>
+
+                    {/* CAMPO OUTROS - Aparece quando selecionado */}
+                    {formData.procedures.includes('Outros') && (
+                      <Form.Group className="mb-3">
+                        <Form.Label className="fw-medium">Qual outro procedimento? *</Form.Label>
+                        <Form.Control
+                          type="text"
+                          placeholder="Ex: Radiofrequência, Drenagem Linfática..."
+                          value={formData.otherProcedure}
+                          onChange={(e) => setFormData({...formData, otherProcedure: e.target.value})}
+                          className="rounded-pill"
+                          required
+                        />
+                      </Form.Group>
+                    )}
                   </>
                 )}
 
                 <div className="d-flex justify-content-between mt-4">
                   {step > 1 && (
                     <Button variant="outline-secondary" className="rounded-pill" onClick={() => setStep(step - 1)}>
-                      Voltar
+                      <i className="bi bi-arrow-left me-2"></i>Voltar
                     </Button>
                   )}
                   {step < 3 ? (
-                    <Button variant="olive" className="rounded-pill ms-auto" onClick={() => setStep(step + 1)}>
+                    <Button 
+                      variant="olive" 
+                      className="rounded-pill ms-auto" 
+                      onClick={() => {
+                        if (step === 1 && (!formData.name || !formData.email || !formData.password || !formData.confirmPassword)) {
+                          return setError('Preencha todos os campos obrigatórios');
+                        }
+                        if (step === 2 && (!formData.street || !formData.city || !formData.state)) {
+                          return setError('Preencha todos os campos obrigatórios');
+                        }
+                        setError('');
+                        setStep(step + 1);
+                      }}
+                    >
                       Próximo <i className="bi bi-arrow-right ms-2"></i>
                     </Button>
                   ) : (
-                    <Button variant="gold" className="rounded-pill ms-auto" type="submit" disabled={loading}>
-                      {loading ? 'Enviando...' : 'Finalizar Cadastro'}
+                    <Button 
+                      variant="gold" 
+                      className="rounded-pill ms-auto" 
+                      type="submit" 
+                      disabled={loading || formData.procedures.length === 0}
+                    >
+                      {loading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-check-lg me-2"></i>
+                          Finalizar Cadastro
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>

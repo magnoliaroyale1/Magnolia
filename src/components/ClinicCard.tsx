@@ -1,4 +1,4 @@
-import { Card, Badge, Row, Col } from 'react-bootstrap';
+import { Card, Badge, Button, Row, Col } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { StarRating } from './StarRating';
 import type { Clinic } from '../types';
@@ -28,9 +28,9 @@ export const ClinicCard = ({ clinic }: ClinicCardProps) => {
         </Badge>
       </div>
       
-      <Card.Body className="p-4">
+      <Card.Body className="p-4" style={{ minWidth: 0 }}>
         <div className="d-flex justify-content-between align-items-start mb-2">
-          <Card.Title className="font-serif fw-bold text-olive mb-0 fs-5">
+          <Card.Title className="font-serif fw-bold text-olive mb-0 fs-5 text-truncate" title={clinic.name}>
             {clinic.name}
           </Card.Title>
           <div className="d-flex align-items-center gap-1">
@@ -77,7 +77,7 @@ export const ClinicCard = ({ clinic }: ClinicCardProps) => {
             <small className="text-muted">{clinic.score}</small>
           </div>
           <Link to={`/clinic/${clinic.id}`}>
-            <Button variant="outline-gold" size="sm" className="rounded-pill px-3">
+            <Button variant="outline-olive" size="sm" className="rounded-pill px-3">
               Ver perfil
             </Button>
           </Link>

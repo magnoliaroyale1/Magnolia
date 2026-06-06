@@ -5,10 +5,15 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "node",
+    "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
+    
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

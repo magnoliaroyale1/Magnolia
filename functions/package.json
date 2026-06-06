@@ -1,0 +1,16 @@
+{
+  "name": "magnolia-royale-functions",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0",
+    "nodemailer": "^6.9.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/nodemailer": "^6.4.0"
+  }
+}

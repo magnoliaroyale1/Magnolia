@@ -34,7 +34,7 @@ export const Register = () => {
     <Container className="py-5 mt-5">
       <Row className="justify-content-center">
         <Col md={5}>
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-sm">
             <Card.Body className="p-5">
               <div className="text-center mb-4">
                 <i className="bi bi-person-heart text-olive fs-1"></i>
@@ -42,7 +42,7 @@ export const Register = () => {
                 <p className="text-muted">Junte-se à Magnolia Royale</p>
               </div>
 
-              {error && <Alert variant="danger" className="rounded-3">{error}</Alert>}
+              {error && <Alert variant="danger" className="rounded-4">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
@@ -52,7 +52,7 @@ export const Register = () => {
                     placeholder="Seu nome"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="rounded-pill py-2 px-4"
+                    className="rounded-pill"
                     required
                   />
                 </Form.Group>
@@ -64,7 +64,7 @@ export const Register = () => {
                     placeholder="seu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="rounded-pill py-2 px-4"
+                    className="rounded-pill"
                     required
                   />
                 </Form.Group>
@@ -76,7 +76,7 @@ export const Register = () => {
                     placeholder="Mínimo 6 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="rounded-pill py-2 px-4"
+                    className="rounded-pill"
                     required
                     minLength={6}
                   />
@@ -89,7 +89,7 @@ export const Register = () => {
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="rounded-pill py-2 px-4"
+                    className="rounded-pill"
                     required
                   />
                 </Form.Group>

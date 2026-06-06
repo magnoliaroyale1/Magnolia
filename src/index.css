@@ -21,7 +21,7 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 .text-olive { color: var(--olive) !important; }
 .text-gold { color: var(--gold) !important; }
 .bg-olive { background-color: var(--olive) !important; }
-.bg-cream { background-color: var(--cream) !important; }
+
 .bg-gold { background-color: var(--gold) !important; }
 .border-gold { border-color: var(--gold) !important; }
 
@@ -93,12 +93,4 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 
 .progress-bar {
   background-color: var(--gold);
-}
-
-.rounded-xl {
-  border-radius: 16px;
-}
-
-.shadow-soft {
-  box-shadow: 0 4px 20px rgba(58, 90, 64, 0.08);
 }

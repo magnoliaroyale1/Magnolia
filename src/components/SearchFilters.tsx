@@ -7,6 +7,7 @@ interface Filters {
   minPrice: string;
   maxPrice: string;
   minRating: string;
+  verifiedOnly: boolean;
 }
 
 interface SearchFiltersProps {
@@ -19,7 +20,8 @@ export const SearchFilters = ({ onFilter }: SearchFiltersProps) => {
     procedure: '',
     minPrice: '',
     maxPrice: '',
-    minRating: ''
+    minRating: '',
+    verifiedOnly: false
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -46,11 +48,15 @@ export const SearchFilters = ({ onFilter }: SearchFiltersProps) => {
                   <option value="São Paulo">São Paulo</option>
                   <option value="Rio de Janeiro">Rio de Janeiro</option>
                   <option value="Belo Horizonte">Belo Horizonte</option>
+                  <option value="Curitiba">Curitiba</option>
+                  <option value="Porto Alegre">Porto Alegre</option>
+                  <option value="Salvador">Salvador</option>
+                  <option value="Brasília">Brasília</option>
                 </Form.Select>
               </Form.Group>
             </Col>
             
-            <Col md={3}>
+            <Col md={2}>
               <Form.Group>
                 <Form.Label className="fw-medium text-olive">
                   <i className="bi bi-heart me-2"></i>Procedimento
@@ -65,6 +71,9 @@ export const SearchFilters = ({ onFilter }: SearchFiltersProps) => {
                   <option value="Preenchimento">Preenchimento</option>
                   <option value="Limpeza de Pele">Limpeza de Pele</option>
                   <option value="Laser">Laser</option>
+                  <option value="Peeling">Peeling</option>
+                  <option value="Microagulhamento">Microagulhamento</option>
+                  <option value="Radiofrequência">Radiofrequência</option>
                 </Form.Select>
               </Form.Group>
             </Col>
@@ -99,9 +108,32 @@ export const SearchFilters = ({ onFilter }: SearchFiltersProps) => {
                 />
               </Form.Group>
             </Col>
-            
-            <Col md={2} className="d-flex align-items-end">
-              <Button type="submit" variant="olive" className="w-100 rounded-pill">
+
+            <Col md={2}>
+              <Form.Group>
+                <Form.Label className="fw-medium text-olive">Preço Max</Form.Label>
+                <Form.Control 
+                  type="number"
+                  placeholder="R$"
+                  value={filters.maxPrice}
+                  onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
+                  className="rounded-pill"
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={1} className="d-flex flex-column justify-content-end">
+              <Form.Check
+                type="switch"
+                label="Verificadas"
+                checked={filters.verifiedOnly}
+                onChange={(e) => setFilters({...filters, verifiedOnly: e.target.checked})}
+              />
+            </Col>
+          </Row>
+          <Row className="mt-3">
+            <Col className="d-flex justify-content-end">
+              <Button type="submit" variant="olive" className="rounded-pill px-5">
                 <i className="bi bi-search me-2"></i>Buscar
               </Button>
             </Col>

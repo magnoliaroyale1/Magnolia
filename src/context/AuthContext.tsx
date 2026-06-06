@@ -4,20 +4,26 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  type User as FirebaseUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import type { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  register: (email: string, password: string, name: string, type: 'client' | 'clinic') => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  isAdmin: boolean;
+  isClinic: boolean;
+  isClient: boolean;
+  isProfessional: boolean;
+  register: (email: string, password: string, name: string, role: 'client' | 'clinic' | 'admin' | 'professional') => Promise<void>;
+  login: (email: string, password: string) => Promise<FirebaseUser>;
   logout: () => Promise<void>;
 }
 
+// ✅ Corrigido: removido << extra
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -25,11 +31,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists()) {
-          setUser({ ...userDoc.data() as User, uid: firebaseUser.uid });
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            setUser({ ...userData, uid: firebaseUser.uid });
+          } else {
+            setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || '',
+              role: 'client',
+              createdAt: Timestamp.now()
+            });
+          }
+        } catch (error) {
+          console.error('Erro ao buscar usuário:', error);
+          setUser(null);
         }
       } else {
         setUser(null);
@@ -37,10 +57,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
 
-  const register = async (email: string, password: string, name: string, type: 'client' | 'clinic') => {
+  const register = async (email: string, password: string, name: string, role: 'client' | 'clinic' | 'admin' | 'professional') => {
     const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(firebaseUser, { displayName: name });
     
@@ -48,8 +68,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       uid: firebaseUser.uid,
       email,
       displayName: name,
-      type,
-      createdAt: new Date()
+      role,
+      createdAt: Timestamp.now()
     };
     
     await setDoc(doc(db, 'users', firebaseUser.uid), userData);
@@ -57,7 +77,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    return result.user;
   };
 
   const logout = async () => {
@@ -65,8 +86,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const isAdmin = user?.role === 'admin';
+  const isClinic = user?.role === 'clinic';
+  const isClient = user?.role === 'client';
+  const isProfessional = user?.role === 'professional';
+
   return (
-    <AuthContext.Provider value={{ user, loading, register, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      isAdmin, 
+      isClinic, 
+      isClient,
+      isProfessional,
+      register, 
+      login, 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

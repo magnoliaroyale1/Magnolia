@@ -1,0 +1,63 @@
+export const PROCEDURES_LIST = [
+    'Botox',
+    'Preenchimento',
+    'Limpeza de Pele',
+    'Laser',
+    'Peeling',
+    'Microagulhamento',
+    'Radiofrequência',
+    'Drenagem Linfática',
+    'Outros'
+  ];
+  
+  export const BRAZIL_STATES = [
+    { value: 'AC', label: 'Acre' },
+    { value: 'AL', label: 'Alagoas' },
+    { value: 'AP', label: 'Amapá' },
+    { value: 'AM', label: 'Amazonas' },
+    { value: 'BA', label: 'Bahia' },
+    { value: 'CE', label: 'Ceará' },
+    { value: 'DF', label: 'Distrito Federal' },
+    { value: 'ES', label: 'Espírito Santo' },
+    { value: 'GO', label: 'Goiás' },
+    { value: 'MA', label: 'Maranhão' },
+    { value: 'MT', label: 'Mato Grosso' },
+    { value: 'MS', label: 'Mato Grosso do Sul' },
+    { value: 'MG', label: 'Minas Gerais' },
+    { value: 'PA', label: 'Pará' },
+    { value: 'PB', label: 'Paraíba' },
+    { value: 'PR', label: 'Paraná' },
+    { value: 'PE', label: 'Pernambuco' },
+    { value: 'PI', label: 'Piauí' },
+    { value: 'RJ', label: 'Rio de Janeiro' },
+    { value: 'RN', label: 'Rio Grande do Norte' },
+    { value: 'RS', label: 'Rio Grande do Sul' },
+    { value: 'RO', label: 'Rondônia' },
+    { value: 'RR', label: 'Roraima' },
+    { value: 'SC', label: 'Santa Catarina' },
+    { value: 'SP', label: 'São Paulo' },
+    { value: 'SE', label: 'Sergipe' },
+    { value: 'TO', label: 'Tocantins' }
+  ];
+  
+  export const PLANS = [
+    {
+      id: 'basic',
+      name: 'Básico',
+      price: 97,
+      features: ['Perfil básico', 'Até 5 fotos', 'Agendamentos']
+    },
+    {
+      id: 'professional',
+      name: 'Profissional',
+      price: 197,
+      features: ['Tudo do Básico', 'Fotos ilimitadas', 'Chat com clientes', 'Destaque nas buscas'],
+      popular: true
+    },
+    {
+      id: 'premium',
+      name: 'Premium',
+      price: 397,
+      features: ['Tudo do Profissional', 'Verificação prioritária', 'Blog da clínica', 'Suporte VIP']
+    }
+  ];

@@ -1,11 +1,22 @@
 import { Container, Row, Col, Button, Card, Badge } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useClinics } from '../hooks/useClinics';
 import { ClinicCard } from '../components/ClinicCard';
 
 export const Home = () => {
   const { clinics, loading } = useClinics();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const featuredClinics = clinics.slice(0, 3);
+
+  const handlePlanClick = (planId: string) => {
+    if (!user || user.role === 'client' || user.role === 'admin' || user.role === 'professional') {
+      navigate('/register-clinic');
+    } else if (user.role === 'clinic') {
+      navigate(`/dashboard/clinic/checkout?plan=${planId}`);
+    }
+  };
 
   return (
     <div>
@@ -26,7 +37,7 @@ export const Home = () => {
               </p>
               <div className="d-flex gap-3">
                 <Link to="/clinics">
-                  <Button size="lg" className="rounded-pill px-5 btn-gold">
+                  <Button size="lg" variant="gold" className="rounded-pill px-5">
                     Explorar Clínicas
                   </Button>
                 </Link>
@@ -103,7 +114,7 @@ export const Home = () => {
               <p className="text-muted mb-0">As mais bem avaliadas da plataforma</p>
             </div>
             <Link to="/clinics">
-              <Button variant="outline-olive" className="rounded-pill">
+              <Button variant="outline-olive" className="rounded-pill px-4">
                 Ver todas <i className="bi bi-arrow-right ms-2"></i>
               </Button>
             </Link>
@@ -145,7 +156,7 @@ export const Home = () => {
                   <li className="mb-2"><i className="bi bi-check2 text-olive me-2"></i>Até 5 fotos</li>
                   <li className="mb-2"><i className="bi bi-check2 text-olive me-2"></i>Agendamentos</li>
                 </ul>
-                <Button variant="outline-olive" className="w-100 rounded-pill">Começar</Button>
+                <Button variant="gold" className="w-100 rounded-pill" onClick={() => handlePlanClick('basic')}>Começar</Button>
               </Card.Body>
             </Card>
           </Col>
@@ -164,7 +175,7 @@ export const Home = () => {
                   <li className="mb-2"><i className="bi bi-check2 text-olive me-2"></i>Chat com clientes</li>
                   <li className="mb-2"><i className="bi bi-check2 text-olive me-2"></i>Destaque nas buscas</li>
                 </ul>
-                <Button variant="gold" className="w-100 rounded-pill">Começar</Button>
+                <Button variant="gold" className="w-100 rounded-pill" onClick={() => handlePlanClick('professional')}>Começar</Button>
               </Card.Body>
             </Card>
           </Col>
@@ -180,7 +191,7 @@ export const Home = () => {
                   <li className="mb-2"><i className="bi bi-check2 text-olive me-2"></i>Blog da clínica</li>
                   <li className="mb-2"><i className="bi bi-check2 text-olive me-2"></i>Suporte VIP</li>
                 </ul>
-                <Button variant="outline-olive" className="w-100 rounded-pill">Começar</Button>
+                <Button variant="gold" className="w-100 rounded-pill" onClick={() => handlePlanClick('premium')}>Começar</Button>
               </Card.Body>
             </Card>
           </Col>

@@ -1,14 +1,19 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';  // ← MUDE AQUI
+import { useAuth } from '../context/AuthContext';
 import type { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  allowedTypes?: ('client' | 'clinic')[];
+  allowedRoles?: ('client' | 'clinic' | 'admin' | 'professional')[];
+  requireAuth?: boolean;
 }
 
-export const ProtectedRoute = ({ children, allowedTypes }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+export const ProtectedRoute = ({ 
+  children, 
+  allowedRoles = ['client', 'clinic', 'admin'],
+  requireAuth = true 
+}: ProtectedRouteProps) => {
+  const { user, loading, isAdmin, isClinic, isClient, isProfessional } = useAuth();
 
   if (loading) {
     return (
@@ -20,12 +25,20 @@ export const ProtectedRoute = ({ children, allowedTypes }: ProtectedRouteProps) 
     );
   }
 
-  if (!user) {
+  if (requireAuth && !user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedTypes && !allowedTypes.includes(user.type)) {
-    return <Navigate to="/" replace />;
+  if (user && allowedRoles.length > 0) {
+    const hasAccess = 
+      (isAdmin && allowedRoles.includes('admin')) ||
+      (isClinic && allowedRoles.includes('clinic')) ||
+      (isClient && allowedRoles.includes('client')) ||
+      (isProfessional && allowedRoles.includes('professional'));
+    
+    if (!hasAccess) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;
