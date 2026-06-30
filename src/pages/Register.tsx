@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { SEO } from '../components/SEO';
 
 export const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -18,11 +20,14 @@ export const Register = () => {
     if (password !== confirmPassword) {
       return setError('As senhas não coincidem');
     }
+    if (!agreeTerms) {
+      return setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
+    }
     try {
       setError('');
       setLoading(true);
       await register(email, password, name, 'client');
-      navigate('/dashboard/client');
+      navigate('/verify-email');
     } catch (err) {
       setError('Erro ao criar conta. Tente novamente.');
     } finally {
@@ -32,6 +37,7 @@ export const Register = () => {
 
   return (
     <Container className="py-5 mt-5">
+      <SEO title="Criar Conta" description="Crie sua conta na Magnolia Royale e encontre as melhores clínicas de estética." url="https://magnoliaroyale.com.br/register" />
       <Row className="justify-content-center">
         <Col md={5}>
           <Card className="border-0 shadow-sm">
@@ -93,6 +99,21 @@ export const Register = () => {
                     required
                   />
                 </Form.Group>
+
+                <Form.Check
+                  type="checkbox"
+                  id="agreeTerms"
+                  className="mb-3"
+                  label={
+                    <span className="small">
+                      Aceito os <Link to="/termos" target="_blank" className="text-gold">Termos de Uso</Link> e a{' '}
+                      <Link to="/privacidade" target="_blank" className="text-gold">Política de Privacidade</Link>
+                    </span>
+                  }
+                  checked={agreeTerms}
+                  onChange={e => setAgreeTerms(e.target.checked)}
+                  required
+                />
 
                 <Button
                   type="submit"

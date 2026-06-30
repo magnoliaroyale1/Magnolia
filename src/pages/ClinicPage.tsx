@@ -15,6 +15,8 @@ import { useProfessionalsByClinic } from '../hooks/useProfessionals';
 import { useBlogPosts } from '../hooks/useBlogPosts';
 import { ProfessionalCard } from '../components/ProfessionalCard';
 import { TimeSlotPicker } from '../components/TimeSlotPicker';
+import { Helmet } from 'react-helmet-async';
+import { SEO } from '../components/SEO';
 
 export const ClinicPage = () => {
   const { id } = useParams();
@@ -35,13 +37,15 @@ export const ClinicPage = () => {
   const [comment, setComment] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [reviewBlockReason, setReviewBlockReason] = useState('');
   const [reviewChecked, setReviewChecked] = useState(false);
   const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
 
   useEffect(() => {
     if (user?.role === 'client' && id) {
-      checkCanReview(id, user.uid).then(can => {
-        setCanReview(can);
+      checkCanReview(id, user.uid).then(result => {
+        setCanReview(result.canReview);
+        setReviewBlockReason(result.reason);
         setReviewChecked(true);
       });
     }
@@ -54,6 +58,7 @@ export const ClinicPage = () => {
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('09:00');
   const [appointmentSuccess, setAppointmentSuccess] = useState(false);
+  const [appointmentBlocked, setAppointmentBlocked] = useState(false);
   const [reviewProfFilter, setReviewProfFilter] = useState('');
   const [reviewProfessionalId, setReviewProfessionalId] = useState('');
 
@@ -113,7 +118,10 @@ export const ClinicPage = () => {
 
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedProcedure || !appointmentDate || !selectedProfessional) return;
+    if (!user || user.role !== 'client' || !selectedProcedure || !appointmentDate || !selectedProfessional) {
+      if (user && user.role !== 'client') setAppointmentBlocked(true);
+      return;
+    }
     const success = await createAppointment({
       clinicId: id!,
       professionalId: selectedProfessional.id,
@@ -159,8 +167,40 @@ export const ClinicPage = () => {
     ? Math.round((reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) * 10) / 10
     : clinic.rating || 0;
 
+  const schemaOrg = clinic ? {
+    '@context': 'https://schema.org',
+    '@type': 'MedicalBusiness',
+    name: clinic.name,
+    description: clinic.description,
+    image: clinic.images?.[0],
+    address: clinic.address ? {
+      '@type': 'PostalAddress',
+      streetAddress: clinic.address.street,
+      addressLocality: clinic.address.city,
+      addressRegion: clinic.address.state,
+      postalCode: clinic.address.zipCode
+    } : undefined,
+    aggregateRating: clinic.reviewCount > 0 ? {
+      '@type': 'AggregateRating',
+      ratingValue: clinic.rating,
+      reviewCount: clinic.reviewCount
+    } : undefined,
+    priceRange: '$$'
+  } : null;
+
   return (
     <Container className="py-5 mt-5">
+      <SEO
+        title={clinic?.name || 'Clínica'}
+        description={clinic?.description?.slice(0, 160) || 'Clínica parceira Magnolia Royale'}
+        image={clinic?.images?.[0]}
+        url={`https://magnoliaroyale.com.br/clinic/${id}`}
+      />
+      {schemaOrg && (
+        <Helmet>
+          <script type="application/ld+json">{JSON.stringify(schemaOrg)}</script>
+        </Helmet>
+      )}
       <Row>
         <Col lg={8}>
           <Card className="border-0 shadow-sm mb-4">
@@ -273,11 +313,17 @@ export const ClinicPage = () => {
                       ) : (
                         <Alert variant="info" className="rounded-4">
                           <i className="bi bi-info-circle me-2"></i>
-                          Você só pode avaliar clínicas onde já realizou um procedimento.
+                          {reviewBlockReason || 'Você ainda não pode avaliar esta clínica.'}
                         </Alert>
                       )
+                    ) : user ? (
+                      <p className="text-muted">
+                        <i className="bi bi-info-circle me-1"></i>Apenas clientes com agendamento concluído podem avaliar.
+                      </p>
                     ) : (
-                      <p className="text-muted">Faça login como cliente para avaliar.</p>
+                      <p className="text-muted">
+                        <i className="bi bi-info-circle me-1"></i>Apenas clientes com agendamento concluído podem avaliar.
+                      </p>
                     )}
                     <hr />
                     {professionals.length > 0 && (
@@ -432,6 +478,11 @@ export const ClinicPage = () => {
               {appointmentSuccess && (
                 <Alert variant="success" className="rounded-4 py-2">Solicitação enviada!</Alert>
               )}
+              {appointmentBlocked && (
+                <Alert variant="warning" className="rounded-4 py-2" dismissible onClose={() => setAppointmentBlocked(false)}>
+                  <i className="bi bi-exclamation-triangle me-2"></i>Apenas clientes podem agendar.
+                </Alert>
+              )}
               <Form onSubmit={handleSchedule}>
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-medium">Procedimento</Form.Label>
@@ -496,7 +547,7 @@ export const ClinicPage = () => {
                   variant="gold"
                   type="submit"
                   className="w-100 rounded-pill py-2"
-                  disabled={creating || !user || !selectedProfessional || !appointmentTime}
+                  disabled={creating || !user || user.role !== 'client' || !selectedProfessional || !appointmentTime}
                 >
                   <i className="bi bi-calendar-check me-2"></i>
                   {creating ? 'Solicitando...' : 'Solicitar Agendamento'}
@@ -504,6 +555,11 @@ export const ClinicPage = () => {
                 {!user && (
                   <small className="text-muted d-block text-center mt-2">
                     <a href="/login" className="text-gold">Faça login</a> para agendar
+                  </small>
+                )}
+                {user && user.role !== 'client' && (
+                  <small className="text-muted d-block text-center mt-2">
+                    <i className="bi bi-info-circle me-1"></i>Apenas clientes podem agendar.
                   </small>
                 )}
               </Form>
@@ -519,6 +575,33 @@ export const ClinicPage = () => {
                 <i className="bi bi-chat-dots me-2"></i>
                 {chatLoading ? 'Abrindo...' : 'Conversar com Clínica'}
               </Button>
+
+              {clinic?.cancellationPolicy && (
+                <div className="mt-3 p-3 bg-light rounded-3">
+                  <h6 className="fw-bold small text-olive mb-2">
+                    <i className="bi bi-info-circle me-1"></i>Regras de Cancelamento
+                  </h6>
+                  {clinic.cancellationPolicy.allowCancellation ? (
+                    <small className="text-muted d-block">
+                      Cancelamento permitido até {clinic.cancellationPolicy.minHoursBeforeCancel}h antes.
+                    </small>
+                  ) : (
+                    <small className="text-muted d-block">Cancelamento não permitido.</small>
+                  )}
+                  {clinic.cancellationPolicy.chargeCancellationFee && clinic.cancellationPolicy.cancellationFee > 0 && (
+                    <small className="text-muted d-block">
+                      Multa de R$ {clinic.cancellationPolicy.cancellationFee} em caso de cancelamento fora do prazo.
+                    </small>
+                  )}
+                  {clinic.cancellationPolicy.allowRescheduling ? (
+                    <small className="text-muted d-block">
+                      Remarcação permitida até {clinic.cancellationPolicy.minHoursBeforeReschedule}h antes.
+                    </small>
+                  ) : (
+                    <small className="text-muted d-block">Remarcação não permitida.</small>
+                  )}
+                </div>
+              )}
 
               <div className="mt-3">
                 <Button

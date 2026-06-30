@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { Appointment, ClientSummary } from '../types';
 
@@ -13,7 +13,8 @@ export const useClinicClients = (clinicId: string) => {
       try {
         const q = query(
           collection(db, 'appointments'),
-          where('clinicId', '==', clinicId)
+          where('clinicId', '==', clinicId),
+          limit(500)
         );
         const snapshot = await getDocs(q);
         const appointments = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Appointment));

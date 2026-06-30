@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, orderBy, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../services/firebase';
 import type { Professional } from '../types';
 
@@ -18,21 +19,7 @@ export const useProfessionalsByClinic = (clinicId: string) => {
       const snapshot = await getDocs(q);
       setProfessionals(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Professional)));
     } catch (err) {
-      console.warn('Query indexada falhou, buscando todas e filtrando...', err);
-      try {
-        const snapshot = await getDocs(collection(db, 'professionals'));
-        const data = snapshot.docs
-          .map(d => ({ id: d.id, ...d.data() } as Professional))
-          .filter(p => p.clinicId === clinicId)
-          .sort((a, b) => {
-            const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt as any)?.toDate?.()?.getTime?.() || 0;
-            const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt as any)?.toDate?.()?.getTime?.() || 0;
-            return bTime - aTime;
-          });
-        setProfessionals(data);
-      } catch (fallbackErr) {
-        console.error('Fallback tambem falhou:', fallbackErr);
-      }
+      console.warn('Erro ao buscar profissionais. Crie o índice composto no Firebase Console:', err);
     } finally {
       setLoading(false);
     }
@@ -75,23 +62,39 @@ export const useCreateProfessional = () => {
   const [creating, setCreating] = useState(false);
 
   const createProfessional = async (data: {
-    uid: string;
     clinicId: string;
     name: string;
     email: string;
+    password: string;
     bio: string;
     procedures: string[];
   }) => {
     setCreating(true);
     try {
+      const functions = getFunctions();
+      const createUser = httpsCallable(functions, 'createProfessionalUser');
+      const result = await createUser({
+        email: data.email,
+        password: data.password,
+        name: data.name,
+        clinicId: data.clinicId,
+      });
+      const { uid } = result.data as { uid: string };
+
       await addDoc(collection(db, 'professionals'), {
-        ...data,
+        uid,
+        clinicId: data.clinicId,
+        name: data.name,
+        email: data.email,
+        bio: data.bio,
+        procedures: data.procedures,
         photoURL: '',
         createdAt: Timestamp.now()
       });
       return true;
-    } catch (err) {
-      console.error('Error creating professional:', err);
+    } catch (err: any) {
+      const message = err?.details?.message || err?.message || 'Erro ao criar profissional';
+      console.error('Error creating professional:', message);
       return false;
     } finally {
       setCreating(false);

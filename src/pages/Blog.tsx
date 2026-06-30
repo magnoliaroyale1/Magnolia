@@ -1,5 +1,7 @@
 import { Container, Row, Col, Card, Badge, Spinner } from 'react-bootstrap';
 import { useBlogPosts } from '../hooks/useBlogPosts';
+import { Link } from 'react-router-dom';
+import { SEO } from '../components/SEO';
 import { formatDateBR } from '../utils/date';
 
 export const Blog = () => {
@@ -7,6 +9,11 @@ export const Blog = () => {
 
   return (
     <Container className="py-5 mt-5">
+      <SEO
+        title="Blog"
+        description="Dicas, tendências e guias sobre estética premium, procedimentos e cuidados com a pele."
+        url="https://magnoliaroyale.com.br/blog"
+      />
       <div className="text-center mb-5">
         <h2 className="font-serif fw-bold text-olive">Blog Magnolia Royale</h2>
         <p className="text-muted">Dicas e tendências do mundo da estética</p>

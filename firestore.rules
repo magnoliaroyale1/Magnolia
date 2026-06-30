@@ -1,0 +1,250 @@
+rules_version = '2';
+
+// Helper: check if user has a specific role
+function isAuthenticated() { return request.auth != null; }
+function isAdmin() { return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
+function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
+
+// Helper: check if user owns a clinic
+function isClinicOwner(clinicId) {
+  return isAuthenticated()
+    && exists(/databases/$(database)/documents/clinics/$(clinicId))
+    && get(/databases/$(database)/documents/clinics/$(clinicId)).data.ownerId == request.auth.uid;
+}
+
+// Helper: check if user is a client
+function isClient() {
+  return isAuthenticated()
+    && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'client';
+}
+
+// Helper: validate incoming data fields exist and have expected types
+function isValidString(val) { return val is string && val.size() > 0; }
+function isNumber(val) { return val is number; }
+function isBoolean(val) { return val is bool; }
+function isTimestamp(val) { return val is timestamp; }
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==========================================
+    // USERS
+    // ==========================================
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role in ['client', 'clinic', 'admin', 'professional'];
+      allow update: if isAuthenticated() && request.auth.uid == uid
+        && request.resource.data.uid == uid;
+      allow delete: if isAdmin() || request.auth.uid == uid;
+    }
+
+    // ==========================================
+    // CLINICS
+    // ==========================================
+    match /clinics/{clinicId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && clinicId == request.auth.uid
+        && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        isClinicOwner(clinicId) || isAdmin()
+      ) && request.resource.data.id == resource.data.id;
+      allow delete: if isAdmin();
+
+      // Clinic reviews
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if isAuthenticated()
+          && request.resource.data.clientId == request.auth.uid
+          && request.resource.data.rating is number
+          && request.resource.data.rating >= 1 && request.resource.data.rating <= 5;
+        allow update: if isAuthenticated() && (
+          request.resource.data.clientId == request.auth.uid || isAdmin()
+        );
+        allow delete: if isAuthenticated() && (
+          request.resource.data.clientId == request.auth.uid || isAdmin()
+        );
+      }
+
+      // Clinic schedule
+      match /schedule/main {
+        allow read: if true;
+        allow write: if isAuthenticated() && (isClinicOwner(clinicId) || isAdmin());
+      }
+
+      // Clinic assessment
+      match /assessment/main {
+        allow read: if isAuthenticated() && (isClinicOwner(clinicId) || isAdmin());
+        allow write: if isAuthenticated() && isClinicOwner(clinicId);
+      }
+
+      // Checkout sessions
+      match /checkouts/{sessionId} {
+        allow read: if isAuthenticated() && (isClinicOwner(clinicId) || isAdmin());
+        allow create: if isAuthenticated() && isClinicOwner(clinicId);
+        allow update: if isAuthenticated() && isClinicOwner(clinicId);
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ==========================================
+    // PROFESSIONALS
+    // ==========================================
+    match /professionals/{profId} {
+      // Public can read professional profiles (no password field)
+      allow read: if true;
+      // Clinic admin or admin can create/update/delete
+      allow create: if isAuthenticated() && (
+        isClinicOwner(request.resource.data.clinicId) || isAdmin()
+      );
+      allow update: if isAuthenticated() && (
+        isClinicOwner(resource.data.clinicId) || isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        isClinicOwner(resource.data.clinicId) || isAdmin()
+      );
+
+      // Professional portfolio
+      match /portfolio/{itemId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && (
+          isClinicOwner(get(/databases/$(database)/documents/professionals/$(profId)).data.clinicId)
+          || isAdmin()
+        );
+        allow delete: if isAuthenticated() && (
+          isClinicOwner(get(/databases/$(database)/documents/professionals/$(profId)).data.clinicId)
+          || isAdmin()
+        );
+      }
+    }
+
+    // ==========================================
+    // APPOINTMENTS
+    // ==========================================
+    match /appointments/{apptId} {
+      allow read: if isAuthenticated() && (
+        resource.data.clientId == request.auth.uid
+        || isClinicOwner(resource.data.clinicId)
+        || isAdmin()
+      );
+      allow create: if isAuthenticated()
+        && request.resource.data.clientId == request.auth.uid
+        && request.resource.data.clientName is string
+        && request.resource.data.procedure is string;
+      allow update: if isAuthenticated() && (
+        resource.data.clientId == request.auth.uid
+        || isClinicOwner(resource.data.clinicId)
+        || isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // BLOG POSTS
+    // ==========================================
+    match /blogPosts/{postId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && (
+        isAdmin()
+        || (request.resource.data.clinicId != null && isClinicOwner(request.resource.data.clinicId))
+      );
+      allow update: if isAuthenticated() && (
+        isAdmin()
+        || (resource.data.clinicId != null && isClinicOwner(resource.data.clinicId))
+      );
+      allow delete: if isAuthenticated() && (
+        isAdmin()
+        || (resource.data.clinicId != null && isClinicOwner(resource.data.clinicId))
+      );
+    }
+
+    // ==========================================
+    // CHATS (direct messaging)
+    // ==========================================
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated()
+        && request.auth.uid in request.resource.data.participants;
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow delete: if isAdmin();
+
+      match /messages/{msgId} {
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if isAuthenticated()
+          && request.resource.data.senderId == request.auth.uid
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow update: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ==========================================
+    // SUPPORT CHATS
+    // ==========================================
+    match /supportChats/{chatId} {
+      allow read: if isAuthenticated() && (
+        isAdmin()
+        || request.auth.uid in resource.data.participants
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isAdmin()
+        || request.auth.uid in resource.data.participants
+      );
+      allow delete: if isAdmin();
+
+      match /messages/{msgId} {
+        allow read: if isAuthenticated() && (
+          isAdmin()
+          || request.auth.uid in get(/databases/$(database)/documents/supportChats/$(chatId)).data.participants
+        );
+        allow create: if isAuthenticated()
+          && request.resource.data.senderId == request.auth.uid;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ==========================================
+    // NOTIFICATIONS
+    // ==========================================
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // REPORTS (complaints about clinics)
+    // ==========================================
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated()
+        && request.resource.data.reporterId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ==========================================
+    // USER SUBCOLLECTIONS (favorites, search history)
+    // ==========================================
+    match /users/{userId}/{document=**} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ==========================================
+    // CONTACTS (public contact form)
+    // ==========================================
+    match /contacts/{contactId} {
+      allow read: if isAdmin();
+      // TODO: em produção, mover para uma Callable Function com reCAPTCHA+rate limiting
+      allow create: if isAuthenticated()
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.message is string;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

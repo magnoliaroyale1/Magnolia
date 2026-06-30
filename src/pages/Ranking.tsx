@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { calculateClinicScore } from '../utils/score';
+import { SEO } from '../components/SEO';
 import type { Clinic } from '../types';
 
 export const Ranking = () => {
@@ -48,6 +49,11 @@ export const Ranking = () => {
 
   return (
     <Container className="py-5 mt-5">
+      <SEO
+        title="Ranking de Clínicas"
+        description="Veja o ranking das melhores clínicas de estética premium avaliadas pelos clientes. Rankings atualizados em tempo real."
+        url="https://magnoliaroyale.com.br/ranking"
+      />
       <div className="text-center mb-5">
         <h2 className="font-serif fw-bold text-olive">Ranking de Clínicas</h2>
         <p className="text-muted">As clínicas mais bem avaliadas da plataforma em tempo real</p>

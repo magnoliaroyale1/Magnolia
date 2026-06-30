@@ -6,6 +6,7 @@ import { RegisterClinic } from '../pages/RegisterClinic';
 import { ClinicsList } from '../pages/ClinicsList';
 import { ClinicPage } from '../pages/ClinicPage';
 import { DashboardClient } from '../pages/DashboardClient';
+import { ClientProfile } from '../pages/ClientProfile';
 import { DashboardClinic } from '../pages/DashboardClinic';
 import { Chat } from '../pages/Chat';
 import { Blog } from '../pages/Blog';
@@ -23,6 +24,11 @@ import { Checkout } from '../pages/Checkout';
 import { PaymentSuccess } from '../pages/PaymentSuccess';
 import { ClinicCRM } from '../pages/ClinicCRM';
 import { ClinicReports } from '../pages/ClinicReports';
+import { TermsOfUse } from '../pages/TermsOfUse';
+import { Privacy } from '../pages/Privacy';
+import { Contact } from '../pages/Contact';
+import { VerifyEmail } from '../pages/VerifyEmail';
+import { NotFound } from '../pages/NotFound';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 export const AppRoutes = () => {
@@ -38,10 +44,21 @@ export const AppRoutes = () => {
       <Route path="/blog" element={<Blog />} />
       <Route path="/ranking" element={<Ranking />} />
       
+      {/* Páginas institucionais */}
+      <Route path="/termos" element={<TermsOfUse />} />
+      <Route path="/privacidade" element={<Privacy />} />
+      <Route path="/contato" element={<Contact />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+
       {/* Rotas de Cliente */}
       <Route path="/dashboard/client" element={
         <ProtectedRoute allowedRoles={['client']}>
           <DashboardClient />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/client/profile" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientProfile />
         </ProtectedRoute>
       } />
       
@@ -125,10 +142,13 @@ export const AppRoutes = () => {
       
       {/* Chat (todos usuários logados) */}
       <Route path="/chat" element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={['client', 'clinic', 'admin', 'professional']}>
           <Chat />
         </ProtectedRoute>
       } />
+
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

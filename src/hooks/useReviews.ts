@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, getDocs, addDoc, orderBy, Timestamp, doc, updateDoc, getDoc, where } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, orderBy, Timestamp, doc, updateDoc, getDoc, where, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { calculateClinicScore } from '../utils/score';
 import type { Review, Clinic } from '../types';
@@ -14,7 +14,8 @@ export const useReviews = (clinicId: string) => {
       try {
         const q = query(
           collection(db, 'clinics', clinicId, 'reviews'),
-          orderBy('createdAt', 'desc')
+          orderBy('createdAt', 'desc'),
+          limit(100)
         );
         const snapshot = await getDocs(q);
         setReviews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review)));
@@ -31,19 +32,32 @@ export const useReviews = (clinicId: string) => {
 };
 
 export const useCheckCanReview = () => {
-  const checkCanReview = async (clinicId: string, clientId: string): Promise<boolean> => {
+  const checkCanReview = async (clinicId: string, clientId: string): Promise<{ canReview: boolean; reason: string }> => {
     try {
-      const q = query(
+      const apptQ = query(
         collection(db, 'appointments'),
         where('clinicId', '==', clinicId),
         where('clientId', '==', clientId),
         where('status', '==', 'completed')
       );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.length > 0;
+      const apptSnap = await getDocs(apptQ);
+      if (apptSnap.docs.length === 0) {
+        return { canReview: false, reason: 'Você ainda não realizou nenhum procedimento nesta clínica.' };
+      }
+
+      const reviewQ = query(
+        collection(db, 'clinics', clinicId, 'reviews'),
+        where('clientId', '==', clientId)
+      );
+      const reviewSnap = await getDocs(reviewQ);
+      if (reviewSnap.docs.length > 0) {
+        return { canReview: false, reason: 'Você já avaliou esta clínica.' };
+      }
+
+      return { canReview: true, reason: '' };
     } catch (error) {
       console.error('Error checking review eligibility:', error);
-      return false;
+      return { canReview: false, reason: 'Erro ao verificar elegibilidade.' };
     }
   };
 

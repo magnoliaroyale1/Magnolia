@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Spinner, Button } from 'react-bootstrap';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { ClinicCard } from '../components/ClinicCard';
 import { SearchFilters } from '../components/SearchFilters';
+import { useFavorites } from '../hooks/useFavorites';
+import { SEO } from '../components/SEO';
 import { useAuth } from '../context/AuthContext';
 import { useSearchHistory } from '../hooks/useSearchHistory';
 import type { Clinic } from '../types';
@@ -23,6 +25,7 @@ export const ClinicsList = () => {
   const [allClinics, setAllClinics] = useState<Clinic[]>([]);
   const [filteredClinics, setFilteredClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayLimit, setDisplayLimit] = useState(9);
 
   useEffect(() => {
     const fetchClinics = async () => {
@@ -37,18 +40,7 @@ export const ClinicsList = () => {
         setAllClinics(data);
         setFilteredClinics(data);
       } catch (err) {
-        console.warn('Query indexada falhou, buscando todas e filtrando...', err);
-        try {
-          const snapshot = await getDocs(collection(db, 'clinics'));
-          const data = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Clinic))
-            .filter(c => c.status === 'approved')
-            .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-          setAllClinics(data);
-          setFilteredClinics(data);
-        } catch (fallbackErr) {
-          console.error('Fallback também falhou:', fallbackErr);
-        }
+        console.error('Erro ao buscar clínicas. Crie o índice composto no Firebase Console:', err);
       } finally {
         setLoading(false);
       }
@@ -95,6 +87,7 @@ export const ClinicsList = () => {
     }
 
     setFilteredClinics(result);
+    setDisplayLimit(9);
 
     if (user) {
       saveSearch('', {
@@ -108,6 +101,11 @@ export const ClinicsList = () => {
 
   return (
     <Container className="py-5 mt-5">
+      <SEO
+        title="Encontrar Clínicas"
+        description="Explore e compare as melhores clínicas de estética premium. Filtre por localização, procedimento e avaliação."
+        url="https://magnoliaroyale.com.br/clinics"
+      />
       <div className="mb-4">
         <h2 className="font-serif fw-bold text-olive">Encontre sua Clínica</h2>
         <p className="text-muted">Explore as melhores clínicas de estética premium</p>
@@ -125,13 +123,22 @@ export const ClinicsList = () => {
           <p className="text-muted">Nenhuma clínica encontrada com esses filtros.</p>
         </div>
       ) : (
-        <Row className="g-4">
-          {filteredClinics.map(clinic => (
-            <Col md={6} lg={4} key={clinic.id}>
-              <ClinicCard clinic={clinic} />
-            </Col>
-          ))}
-        </Row>
+        <>
+          <Row className="g-4">
+            {filteredClinics.slice(0, displayLimit).map(clinic => (
+              <Col md={6} lg={4} key={clinic.id}>
+                <ClinicCard clinic={clinic} />
+              </Col>
+            ))}
+          </Row>
+          {displayLimit < filteredClinics.length && (
+            <div className="text-center mt-4">
+              <Button variant="outline-olive" className="rounded-pill px-5" onClick={() => setDisplayLimit(prev => prev + 9)}>
+                Carregar mais ({filteredClinics.length - displayLimit} restantes)
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </Container>
   );

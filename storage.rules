@@ -1,0 +1,58 @@
+rules_version = '2';
+
+// Helper: check if user is authenticated and has a specific role
+function isAuthenticated() { return request.auth != null; }
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Clinic images: clinics/{clinicId}/{filename}
+    // Only clinic owner or admin can upload
+    match /clinics/{clinicId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+        && request.auth.uid == clinicId
+        && request.resource.size < 5 * 1024 * 1024 // 5MB max
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAuthenticated()
+        && request.auth.uid == clinicId;
+    }
+
+    // Professional portfolio: professionals/{profId}/{fileName}
+    // Apenas o próprio profissional pode gerenciar seu portfólio
+    // Admins e donos de clínica devem usar uma Cloud Function para upload em nome do profissional
+    match /professionals/{profId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+        && request.auth.uid == profId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAuthenticated()
+        && request.auth.uid == profId;
+    }
+
+    // User avatars: avatars/{uid}/{fileName}
+    match /avatars/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+        && request.auth.uid == uid
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAuthenticated()
+        && request.auth.uid == uid;
+    }
+
+    // Blog images: blog/{fileName}
+    match /blog/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdmin();
+    }
+
+    // Generic fallback - deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -8,6 +8,7 @@ export interface User {
   photoURL?: string;
   createdAt: Timestamp | Date;
   clinicId?: string;
+  emailVerified?: boolean;
 }
 
 export interface Address {
@@ -37,6 +38,7 @@ export interface Clinic {
   score: number;
   images: string[];
   plan: 'basic' | 'professional' | 'premium';
+  cancellationPolicy?: CancellationPolicy;
   createdAt: Timestamp | Date;
   assessmentCompleted?: boolean;
   adminFeedback?: string;
@@ -92,9 +94,20 @@ export interface Appointment {
   procedure: string;
   date: Date | Timestamp;
   time: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'cancelled_by_client' | 'completed';
   notes?: string;
   valor?: number;
+  cancelReason?: string;
+}
+
+export interface CancellationPolicy {
+  allowCancellation: boolean;
+  minHoursBeforeCancel: number;
+  chargeCancellationFee: boolean;
+  cancellationFee: number;
+  allowRescheduling: boolean;
+  minHoursBeforeReschedule: number;
+  updatedAt?: Timestamp | Date;
 }
 
 export interface BlogPost {

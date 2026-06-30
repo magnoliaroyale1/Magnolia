@@ -41,5 +41,9 @@ export const ProtectedRoute = ({
     }
   }
 
+  if (user && !user.emailVerified && !isAdmin) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
   return <>{children}</>;
 };

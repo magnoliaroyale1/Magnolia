@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { BlogPost } from '../types';
 
@@ -14,7 +14,8 @@ export const useClinicBlogPosts = (clinicId: string) => {
       const q = query(
         collection(db, 'blogPosts'),
         where('clinicId', '==', clinicId),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(100)
       );
       const snapshot = await getDocs(q);
       setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost)));

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useClinics } from '../hooks/useClinics';
 import { ClinicCard } from '../components/ClinicCard';
+import { SEO } from '../components/SEO';
 
 export const Home = () => {
   const { clinics, loading } = useClinics();
@@ -20,6 +21,11 @@ export const Home = () => {
 
   return (
     <div>
+      <SEO
+        title="Clínicas Premium"
+        description="Encontre as melhores clínicas de estética, agende procedimentos, veja avaliações reais e transforme sua experiência de beleza."
+        url="https://magnoliaroyale.com.br"
+      />
       {/* Hero Section */}
       <div className="bg-olive text-white py-5">
         <Container className="py-5">

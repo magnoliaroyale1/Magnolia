@@ -7,7 +7,7 @@ const APP_NAME = 'Magnolia Royale';
 const SUPPORT_EMAIL = 'contato@magnoliaroyale.com.br';
 
 const emailTemplates = {
-  approved: (clinicName: string, email: string, password: string) => ({
+  approved: (clinicName: string, email: string, resetLink: string) => ({
     subject: `✅ ${clinicName} foi aprovada na ${APP_NAME}!`,
     html: `
       <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto;">
@@ -17,12 +17,15 @@ const emailTemplates = {
         <div style="padding: 40px; background: #FAF8F5;">
           <h2 style="color: #5C7A4B;">Parabéns, ${clinicName}!</h2>
           <p>Sua clínica foi aprovada em nosso processo de validação.</p>
-          <p><strong>Seus dados de acesso:</strong></p>
-          <p>E-mail: ${email}<br>Senha: ${password}</p>
-          <a href="https://magnoliaroyale-b5afb.web.app/login" 
+          <p>Seu e-mail de acesso é: <strong>${email}</strong></p>
+          <p>Clique no botão abaixo para definir sua senha e acessar a plataforma:</p>
+          <a href="${resetLink}" 
              style="background: #C9A84C; color: #fff; padding: 12px 32px; text-decoration: none; border-radius: 50px; display: inline-block; margin-top: 20px;">
-            Acessar Plataforma
+            Definir Senha e Acessar
           </a>
+          <p style="margin-top: 20px; font-size: 12px; color: #888;">
+            Se o botão não funcionar, copie e cole o link no navegador: ${resetLink}
+          </p>
         </div>
       </div>
     `
@@ -67,6 +70,62 @@ const emailTemplates = {
   })
 };
 
+export const createProfessionalUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado.');
+  }
+
+  const callerUid = context.auth.uid;
+  const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+  const callerData = callerDoc.data();
+
+  if (!callerData || (callerData.role !== 'clinic' && callerData.role !== 'admin')) {
+    throw new functions.https.HttpsError('permission-denied', 'Apenas clínicas e administradores podem criar profissionais.');
+  }
+
+  const { email, password, name, clinicId } = data;
+
+  // Validação rigorosa de entrada
+  const errors: string[] = [];
+  if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors.push('email inválido');
+  }
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    errors.push('senha deve ter no mínimo 8 caracteres');
+  }
+  if (!name || typeof name !== 'string' || name.trim().length < 2 || name.length > 100) {
+    errors.push('nome deve ter entre 2 e 100 caracteres');
+  }
+  if (!clinicId || typeof clinicId !== 'string' || clinicId.length > 50) {
+    errors.push('clinicId inválido');
+  }
+  if (errors.length > 0) {
+    throw new functions.https.HttpsError('invalid-argument', `Campos inválidos: ${errors.join(', ')}.`);
+  }
+
+  if (callerData.role === 'clinic' && callerData.clinicId !== clinicId) {
+    throw new functions.https.HttpsError('permission-denied', 'Você só pode criar profissionais para sua própria clínica.');
+  }
+
+  const userRecord = await admin.auth().createUser({
+    email,
+    password,
+    displayName: name,
+  });
+
+  await admin.firestore().collection('users').doc(userRecord.uid).set({
+    uid: userRecord.uid,
+    email,
+    displayName: name,
+    role: 'professional',
+    clinicId,
+    emailVerified: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  return { uid: userRecord.uid };
+});
+
 export const onClinicApproved = functions.firestore
   .document('clinics/{clinicId}')
   .onUpdate(async (change, context) => {
@@ -79,7 +138,8 @@ export const onClinicApproved = functions.firestore
         .get();
       const userData = usersSnap.data();
       if (!userData?.email) return;
-      const template = emailTemplates.approved(after.name, userData.email, 'senha_temporaria');
+      const resetLink = await admin.auth().generatePasswordResetLink(userData.email);
+      const template = emailTemplates.approved(after.name, userData.email, resetLink);
       await sendEmail(userData.email, template.subject, template.html);
     }
   });

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
+import { SEO } from '../components/SEO';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -29,19 +30,18 @@ export const Login = () => {
         const role = userDoc.data().role;
         if (role === 'clinic') navigate('/dashboard/clinic');
         else if (role === 'admin') navigate('/dashboard/admin');
+        else if (role === 'professional') navigate('/dashboard/professional');
         else navigate('/dashboard/client');
       } else {
         navigate('/');
       }
     } catch (err: any) {
       const messages: Record<string, string> = {
-        'auth/user-not-found': 'Usuário não encontrado.',
-        'auth/wrong-password': 'Senha incorreta.',
         'auth/invalid-credential': 'E-mail ou senha inválidos.',
         'auth/invalid-email': 'E-mail inválido.',
         'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.'
       };
-      setError(messages[err.code] || 'Erro ao fazer login. Verifique seus dados.');
+      setError(messages[err.code] || 'E-mail ou senha inválidos.');
     } finally {
       setLoading(false);
     }
@@ -60,6 +60,7 @@ export const Login = () => {
 
   return (
     <Container className="py-5 mt-5">
+      <SEO title="Entrar" description="Entre na sua conta Magnolia Royale." url="https://magnoliaroyale.com.br/login" />
       <Row className="justify-content-center">
         <Col md={5}>
           <Card className="border-0 shadow-sm">

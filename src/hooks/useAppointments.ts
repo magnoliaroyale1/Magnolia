@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { Appointment } from '../types';
 
@@ -14,7 +14,8 @@ export const useAppointmentsByClient = (clientId: string) => {
         const q = query(
           collection(db, 'appointments'),
           where('clientId', '==', clientId),
-          orderBy('date', 'asc')
+          orderBy('date', 'asc'),
+          limit(100)
         );
         const snapshot = await getDocs(q);
         setAppointments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Appointment)));
@@ -41,7 +42,8 @@ export const useAppointmentsByClinic = (clinicId: string) => {
         const q = query(
           collection(db, 'appointments'),
           where('clinicId', '==', clinicId),
-          orderBy('date', 'asc')
+          orderBy('date', 'asc'),
+          limit(200)
         );
         const snapshot = await getDocs(q);
         setAppointments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Appointment)));
@@ -93,6 +95,53 @@ export const useUpdateAppointmentStatus = () => {
   return { updateStatus };
 };
 
+export const useCancelAppointment = () => {
+  const [cancelling, setCancelling] = useState(false);
+
+  const cancelAppointment = useCallback(async (appointmentId: string, reason?: string) => {
+    setCancelling(true);
+    try {
+      await updateDoc(doc(db, 'appointments', appointmentId), {
+        status: 'cancelled_by_client',
+        cancelReason: reason || '',
+        cancelledAt: Timestamp.now()
+      });
+      return true;
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      return false;
+    } finally {
+      setCancelling(false);
+    }
+  }, []);
+
+  return { cancelAppointment, cancelling };
+};
+
+export const useRescheduleAppointment = () => {
+  const [rescheduling, setRescheduling] = useState(false);
+
+  const rescheduleAppointment = useCallback(async (appointmentId: string, newDate: Date, newTime: string) => {
+    setRescheduling(true);
+    try {
+      await updateDoc(doc(db, 'appointments', appointmentId), {
+        date: newDate,
+        time: newTime,
+        status: 'pending',
+        notes: 'Reagendado pelo cliente'
+      });
+      return true;
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+      return false;
+    } finally {
+      setRescheduling(false);
+    }
+  }, []);
+
+  return { rescheduleAppointment, rescheduling };
+};
+
 export const useAppointmentsByProfessional = (professionalId: string) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +153,8 @@ export const useAppointmentsByProfessional = (professionalId: string) => {
         const q = query(
           collection(db, 'appointments'),
           where('professionalId', '==', professionalId),
-          orderBy('date', 'asc')
+          orderBy('date', 'asc'),
+          limit(200)
         );
         const snapshot = await getDocs(q);
         setAppointments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Appointment)));
@@ -132,7 +182,8 @@ export const usePendingAppointments = (clinicId: string) => {
           collection(db, 'appointments'),
           where('clinicId', '==', clinicId),
           where('status', '==', 'pending'),
-          orderBy('date', 'asc')
+          orderBy('date', 'asc'),
+          limit(200)
         );
         const snapshot = await getDocs(q);
         setAppointments(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Appointment)));

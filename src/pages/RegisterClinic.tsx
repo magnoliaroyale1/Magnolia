@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, ProgressBar } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { auth, db } from '../services/firebase';
 import { PROCEDURES_LIST, BRAZIL_STATES } from '../utils/constants';
 import type { Clinic } from '../types';
@@ -28,7 +28,8 @@ export const RegisterClinic = () => {
     neighborhood: '',
     description: '',
     otherProcedure: '',
-    procedures: [] as string[]
+    agreeTerms: false,
+    procedures: [] as string[],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +38,9 @@ export const RegisterClinic = () => {
     if (formData.password !== formData.confirmPassword) {
       return setError('As senhas não coincidem');
     }
+    if (!formData.agreeTerms) {
+      return setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
+    }
 
     try {
       setError('');
@@ -44,6 +48,7 @@ export const RegisterClinic = () => {
 
       const { user } = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       await updateProfile(user, { displayName: formData.name });
+      await sendEmailVerification(user);
 
       // Processar procedimentos (incluindo "Outros")
       const finalProcedures = formData.procedures.includes('Outros') && formData.otherProcedure
@@ -84,13 +89,19 @@ export const RegisterClinic = () => {
         displayName: formData.name,
         role: 'clinic',
         clinicId: user.uid,
+        emailVerified: false,
         createdAt: new Date()
       });
 
-      navigate('/questionario');
+      navigate('/verify-email');
     } catch (err: any) {
       console.error('Erro no cadastro:', err);
-      setError(err.message || 'Erro ao cadastrar clínica. Tente novamente.');
+      const messages: Record<string, string> = {
+        'auth/email-already-in-use': 'Este e-mail já está em uso.',
+        'auth/weak-password': 'A senha deve ter pelo menos 6 caracteres.',
+        'auth/invalid-email': 'E-mail inválido.',
+      };
+      setError(messages[err.code] || 'Erro ao cadastrar clínica. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -347,6 +358,20 @@ export const RegisterClinic = () => {
                         />
                       </Form.Group>
                     )}
+                    <Form.Check
+                      type="checkbox"
+                      id="clinicAgreeTerms"
+                      className="mb-3"
+                      label={
+                        <span className="small">
+                          Aceito os <Link to="/termos" target="_blank" className="text-gold">Termos de Uso</Link> e a{' '}
+                          <Link to="/privacidade" target="_blank" className="text-gold">Política de Privacidade</Link>
+                        </span>
+                      }
+                      checked={formData.agreeTerms || false}
+                      onChange={e => setFormData(prev => ({ ...prev, agreeTerms: e.target.checked }))}
+                      required
+                    />
                   </>
                 )}
 
@@ -378,7 +403,7 @@ export const RegisterClinic = () => {
                       variant="gold" 
                       className="rounded-pill ms-auto" 
                       type="submit" 
-                      disabled={loading || formData.procedures.length === 0}
+                      disabled={loading || formData.procedures.length === 0 || !formData.agreeTerms}
                     >
                       {loading ? (
                         <>

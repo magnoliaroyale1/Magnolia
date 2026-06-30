@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, updateDoc, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
 export interface AppNotification {
@@ -23,7 +23,8 @@ export const useNotifications = (userId: string) => {
       const q = query(
         collection(db, 'notifications'),
         where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(50)
       );
       const snapshot = await getDocs(q);
       setNotifications(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification)));

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Row, Col, Container, ListGroup, Badge, Button, ProgressBar, Spinner, Modal, Form, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -48,6 +48,7 @@ export const DashboardClinic = () => {
   const [editingProfId, setEditingProfId] = useState<string | null>(null);
   const [profName, setProfName] = useState('');
   const [profEmail, setProfEmail] = useState('');
+  const [profPassword, setProfPassword] = useState('');
   const [profBio, setProfBio] = useState('');
   const [profProcedures, setProfProcedures] = useState<string[]>([]);
 
@@ -56,6 +57,27 @@ export const DashboardClinic = () => {
 
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [editingBlogPost, setEditingBlogPost] = useState<any>(null);
+
+  const [showCancelPolicyModal, setShowCancelPolicyModal] = useState(false);
+  const [editCancelPolicy, setEditCancelPolicy] = useState(clinic?.cancellationPolicy || {
+    allowCancellation: true,
+    minHoursBeforeCancel: 24,
+    chargeCancellationFee: true,
+    cancellationFee: 50,
+    allowRescheduling: true,
+    minHoursBeforeReschedule: 12
+  });
+
+  useEffect(() => {
+    if (clinic?.cancellationPolicy) {
+      setEditCancelPolicy(clinic.cancellationPolicy);
+    }
+  }, [clinic?.cancellationPolicy]);
+
+  const handleSaveCancelPolicy = async () => {
+    const success = await updateClinic({ cancellationPolicy: editCancelPolicy } as any);
+    if (success) setShowCancelPolicyModal(false);
+  };
 
   const openBlogModal = (post?: any) => {
     setEditingBlogPost(post || null);
@@ -88,6 +110,7 @@ export const DashboardClinic = () => {
     setEditingProfId(prof?.id || null);
     setProfName(prof?.name || '');
     setProfEmail(prof?.email || '');
+    setProfPassword('');
     setProfBio(prof?.bio || '');
     setProfProcedures(prof?.procedures || []);
     setShowProfModal(true);
@@ -95,6 +118,7 @@ export const DashboardClinic = () => {
 
   const handleSaveProf = async () => {
     if (!profName.trim() || !profEmail.trim()) return;
+    if (!editingProfId && !profPassword.trim()) return;
     if (editingProfId) {
       await updateProfessional(editingProfId, {
         name: profName,
@@ -104,10 +128,10 @@ export const DashboardClinic = () => {
       } as any);
     } else {
       await createProfessional({
-        uid: `mock_${Date.now()}`,
         clinicId,
         name: profName,
         email: profEmail,
+        password: profPassword,
         bio: profBio,
         procedures: profProcedures
       });
@@ -384,6 +408,30 @@ export const DashboardClinic = () => {
               )}
             </Card.Body>
           </Card>
+
+          <Card className="border-0 shadow-sm mb-4">
+            <Card.Body className="p-4">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h5 className="font-serif fw-bold text-olive mb-0">Regras de Cancelamento</h5>
+                <Button variant="outline-olive" size="sm" className="rounded-pill" onClick={() => setShowCancelPolicyModal(true)}>
+                  <i className="bi bi-gear"></i>
+                </Button>
+              </div>
+              <small className="text-muted d-block">
+                {editCancelPolicy.allowCancellation
+                  ? `Pode cancelar até ${editCancelPolicy.minHoursBeforeCancel}h antes`
+                  : 'Cancelamento desativado'}
+              </small>
+              <small className="text-muted d-block">
+                {editCancelPolicy.allowRescheduling
+                  ? `Pode remarcar até ${editCancelPolicy.minHoursBeforeReschedule}h antes`
+                  : 'Remarcação desativada'}
+              </small>
+              {editCancelPolicy.cancellationFee > 0 && (
+                <small className="text-muted">Multa de R$ {editCancelPolicy.cancellationFee}</small>
+              )}
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
 
@@ -481,6 +529,12 @@ export const DashboardClinic = () => {
               <Form.Label className="fw-medium">E-mail (usado para login)</Form.Label>
               <Form.Control type="email" value={profEmail} onChange={e => setProfEmail(e.target.value)} className="rounded-pill" disabled={!!editingProfId} />
             </Form.Group>
+            {!editingProfId && (
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-medium">Senha</Form.Label>
+                <Form.Control type="password" value={profPassword} onChange={e => setProfPassword(e.target.value)} className="rounded-pill" placeholder="••••••••" />
+              </Form.Group>
+            )}
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">Bio</Form.Label>
               <Form.Control as="textarea" rows={3} value={profBio} onChange={e => setProfBio(e.target.value)} className="rounded-4" />
@@ -564,6 +618,84 @@ export const DashboardClinic = () => {
         <Modal.Footer>
           <Button variant="secondary" className="rounded-pill" onClick={() => setShowScheduleModal(false)}>Cancelar</Button>
           <Button variant="olive" className="rounded-pill" onClick={handleSaveSchedule}>Salvar</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showCancelPolicyModal} onHide={() => setShowCancelPolicyModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="font-serif text-olive">Regras de Cancelamento</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted mb-3">Defina as regras que aparecerão para os clientes na página da clínica.</p>
+          <Form>
+            <Form.Check
+              type="switch"
+              id="allowCancel"
+              label="Permitir cancelamento pelo cliente"
+              checked={editCancelPolicy.allowCancellation}
+              onChange={e => setEditCancelPolicy(prev => ({ ...prev, allowCancellation: e.target.checked }))}
+              className="mb-3"
+            />
+            {editCancelPolicy.allowCancellation && (
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-medium">Prazo mínimo para cancelar (horas antes)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min={1}
+                    value={editCancelPolicy.minHoursBeforeCancel}
+                    onChange={e => setEditCancelPolicy(prev => ({ ...prev, minHoursBeforeCancel: Number(e.target.value) }))}
+                    className="rounded-pill"
+                  />
+                  <Form.Text className="text-muted">Cliente não pode cancelar se faltar menos que isso para o horário.</Form.Text>
+                </Form.Group>
+                <div className="mb-3">
+                  <Form.Check
+                    type="switch"
+                    id="chargeFee"
+                    label="Cobrar multa por cancelamento"
+                    checked={editCancelPolicy.chargeCancellationFee}
+                    onChange={e => setEditCancelPolicy(prev => ({ ...prev, chargeCancellationFee: e.target.checked, cancellationFee: e.target.checked ? prev.cancellationFee || 50 : 0 }))}
+                    className="mb-2"
+                  />
+                  {editCancelPolicy.chargeCancellationFee && (
+                    <Form.Control
+                      type="number"
+                      min={0}
+                      value={editCancelPolicy.cancellationFee}
+                      onChange={e => setEditCancelPolicy(prev => ({ ...prev, cancellationFee: Number(e.target.value) }))}
+                      className="rounded-pill"
+                      placeholder="Valor da multa (R$)"
+                    />
+                  )}
+                </div>
+              </>
+            )}
+            <Form.Check
+              type="switch"
+              id="allowReschedule"
+              label="Permitir remarcação pelo cliente"
+              checked={editCancelPolicy.allowRescheduling}
+              onChange={e => setEditCancelPolicy(prev => ({ ...prev, allowRescheduling: e.target.checked }))}
+              className="mb-3"
+            />
+            {editCancelPolicy.allowRescheduling && (
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-medium">Prazo mínimo para remarcar (horas antes)</Form.Label>
+                <Form.Control
+                  type="number"
+                  min={1}
+                  value={editCancelPolicy.minHoursBeforeReschedule}
+                  onChange={e => setEditCancelPolicy(prev => ({ ...prev, minHoursBeforeReschedule: Number(e.target.value) }))}
+                  className="rounded-pill"
+                />
+              </Form.Group>
+            )}
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" className="rounded-pill" onClick={() => setShowCancelPolicyModal(false)}>Cancelar</Button>
+          <Button variant="olive" className="rounded-pill" onClick={handleSaveCancelPolicy}>Salvar Regras</Button>
         </Modal.Footer>
       </Modal>
 

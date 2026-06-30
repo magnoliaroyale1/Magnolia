@@ -5,9 +5,13 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
+  sendEmailVerification,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  deleteUser,
   type User as FirebaseUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import type { User } from '../types';
 
@@ -21,6 +25,8 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, role: 'client' | 'clinic' | 'admin' | 'professional') => Promise<void>;
   login: (email: string, password: string) => Promise<FirebaseUser>;
   logout: () => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
 }
 
 // ✅ Corrigido: removido << extra
@@ -37,14 +43,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data() as User;
-            setUser({ ...userData, uid: firebaseUser.uid });
+            const verified = firebaseUser.emailVerified;
+            if (userData.emailVerified !== verified) {
+              await updateDoc(doc(db, 'users', firebaseUser.uid), { emailVerified: verified });
+            }
+            setUser({ ...userData, uid: firebaseUser.uid, emailVerified: verified });
           } else {
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || '',
               role: 'client',
-              createdAt: Timestamp.now()
+              createdAt: Timestamp.now(),
+              emailVerified: firebaseUser.emailVerified
             });
           }
         } catch (error) {
@@ -63,13 +74,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (email: string, password: string, name: string, role: 'client' | 'clinic' | 'admin' | 'professional') => {
     const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(firebaseUser, { displayName: name });
+    await sendEmailVerification(firebaseUser);
     
     const userData: User = {
       uid: firebaseUser.uid,
       email,
       displayName: name,
       role,
-      createdAt: Timestamp.now()
+      createdAt: Timestamp.now(),
+      emailVerified: false
     };
     
     await setDoc(doc(db, 'users', firebaseUser.uid), userData);
@@ -84,6 +97,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     await signOut(auth);
     setUser(null);
+  };
+
+  const sendVerificationEmail = async () => {
+    if (auth.currentUser) {
+      await sendEmailVerification(auth.currentUser);
+    }
+  };
+
+  const deleteAccount = async (password: string) => {
+    const fbUser = auth.currentUser;
+    if (!fbUser || !fbUser.email) throw new Error('Usuário não autenticado');
+    const credential = EmailAuthProvider.credential(fbUser.email, password);
+    await reauthenticateWithCredential(fbUser, credential);
+    await deleteDoc(doc(db, 'users', fbUser.uid));
+    await deleteUser(fbUser);
   };
 
   const isAdmin = user?.role === 'admin';
@@ -101,7 +129,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isProfessional,
       register, 
       login, 
-      logout 
+      logout,
+      sendVerificationEmail,
+      deleteAccount
     }}>
       {children}
     </AuthContext.Provider>

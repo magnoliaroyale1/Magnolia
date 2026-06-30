@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, updateDoc, Timestamp, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { Clinic, User, DashboardStats } from '../types';
 
@@ -16,21 +16,21 @@ export const useAdminStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const clinicsSnapshot = await getDocs(collection(db, 'clinics'));
-        const clientsSnapshot = await getDocs(
-          query(collection(db, 'users'), where('role', '==', 'client'))
-        );
+        const [approvedSnap, pendingSnap, clientsSnap] = await Promise.all([
+          getDocs(query(collection(db, 'clinics'), where('status', '==', 'approved'))),
+          getDocs(query(collection(db, 'clinics'), where('status', '==', 'pending'))),
+          getDocs(query(collection(db, 'users'), where('role', '==', 'client')))
+        ]);
         
-        const allClinics = clinicsSnapshot.docs.map(d => d.data() as Clinic);
-        const approved = allClinics.filter(c => c.status === 'approved');
-        const pending = allClinics.filter(c => c.status === 'pending');
+        const approved = approvedSnap.docs.length;
+        const pending = pendingSnap.docs.length;
         
         setStats({
-          totalClinics: allClinics.length,
-          approvedClinics: approved.length,
-          pendingClinics: pending.length,
-          totalClients: clientsSnapshot.docs.length,
-          estimatedRevenue: approved.length * 20
+          totalClinics: approved + pending,
+          approvedClinics: approved,
+          pendingClinics: pending,
+          totalClients: clientsSnap.docs.length,
+          estimatedRevenue: approved * 20
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -52,7 +52,7 @@ export const usePendingClinics = () => {
   useEffect(() => {
     const fetchPending = async () => {
       try {
-        const q = query(collection(db, 'clinics'), where('status', '==', 'pending'));
+        const q = query(collection(db, 'clinics'), where('status', '==', 'pending'), limit(200));
         const snapshot = await getDocs(q);
         setClinics(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Clinic)));
       } catch (error) {
@@ -109,22 +109,13 @@ export const useApprovedClinics = () => {
         const q = query(
           collection(db, 'clinics'),
           where('status', '==', 'approved'),
-          orderBy('createdAt', 'desc')
+          orderBy('createdAt', 'desc'),
+          limit(200)
         );
         const snapshot = await getDocs(q);
         setClinics(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Clinic)));
       } catch (error) {
-        console.warn('Firestore query com filtro falhou, usando fallback client-side:', error);
-        try {
-          const all = await getDocs(collection(db, 'clinics'));
-          const approved = all.docs
-            .map(d => ({ id: d.id, ...d.data() } as Clinic))
-            .filter(c => c.status === 'approved')
-            .sort((a, b) => ((b.createdAt as any)?.toMillis?.() || 0) - ((a.createdAt as any)?.toMillis?.() || 0));
-          setClinics(approved);
-        } catch (fallbackError) {
-          console.error('Fallback também falhou:', fallbackError);
-        }
+        console.error('Erro ao buscar clínicas aprovadas. Crie o índice composto no Firebase Console:', error);
       } finally {
         setLoading(false);
       }
@@ -143,7 +134,7 @@ export const useClients = () => {
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const q = query(collection(db, 'users'), where('role', '==', 'client'));
+        const q = query(collection(db, 'users'), where('role', '==', 'client'), limit(500));
         const snapshot = await getDocs(q);
         setClients(snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as User)));
       } catch (error) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import type { Clinic } from '../types';
 
@@ -18,13 +18,15 @@ export const useClinics = (status?: 'pending' | 'approved' | 'rejected') => {
           q = query(
             collection(db, 'clinics'), 
             where('status', '==', status),
-            orderBy('createdAt', 'desc')
+            orderBy('createdAt', 'desc'),
+            limit(100)
           );
         } else {
           q = query(
             collection(db, 'clinics'), 
             where('status', '==', 'approved'),
-            orderBy('rating', 'desc')
+            orderBy('rating', 'desc'),
+            limit(100)
           );
         }
         
