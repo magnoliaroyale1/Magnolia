@@ -9,6 +9,7 @@ export interface User {
   createdAt: Timestamp | Date;
   clinicId?: string;
   emailVerified?: boolean;
+  phone?: string;
 }
 
 export interface Address {

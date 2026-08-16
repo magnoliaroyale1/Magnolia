@@ -215,7 +215,8 @@ export const DashboardProfessional = () => {
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">Descrição</Form.Label>
-              <Form.Control as="textarea" rows={2} value={portDescription} onChange={e => setPortDescription(e.target.value)} className="rounded-4" />
+              <Form.Control as="textarea" rows={2} value={portDescription} onChange={e => setPortDescription(e.target.value.slice(0, 500))} maxLength={500} className="rounded-4" />
+              <Form.Text className="text-end">0 / 500</Form.Text>
             </Form.Group>
           </Form>
         </Modal.Body>
@@ -243,7 +244,8 @@ export const DashboardProfessional = () => {
           <Form>
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">Bio</Form.Label>
-              <Form.Control as="textarea" rows={4} value={editBio} onChange={e => setEditBio(e.target.value)} className="rounded-4" />
+              <Form.Control as="textarea" rows={4} value={editBio} onChange={e => setEditBio(e.target.value.slice(0, 500))} maxLength={500} className="rounded-4" />
+              <Form.Text className="text-end">0 / 500</Form.Text>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">Procedimentos</Form.Label>

@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } 
 import { auth, db } from '../services/firebase';
 import { PROCEDURES_LIST, BRAZIL_STATES } from '../utils/constants';
 import type { Clinic } from '../types';
+import { useCNPJInput, usePhoneInput, useCEPInput } from '../utils/brasil';
 
 export const RegisterClinic = () => {
   const [step, setStep] = useState(1);
@@ -14,23 +15,28 @@ export const RegisterClinic = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    name: '',
-    cnpj: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    street: '',
-    number: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    neighborhood: '',
-    description: '',
-    otherProcedure: '',
-    agreeTerms: false,
-    procedures: [] as string[],
-  });
+      name: '',
+      cnpj: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+      street: '',
+      number: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      neighborhood: '',
+      description: '',
+      otherProcedure: '',
+      agreeTerms: false,
+      procedures: [] as string[],
+    });
+
+    // Input masks
+    const cnpjInput = useCNPJInput();
+    const phoneInput = usePhoneInput();
+    const cepInput = useCEPInput();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +63,9 @@ export const RegisterClinic = () => {
 
       const clinicData = {
         name: formData.name,
-        cnpj: formData.cnpj,
+        cnpj: cnpjInput.formattedValue,
         email: formData.email,
-        phone: formData.phone,
+        phone: phoneInput.formattedValue,
         status: 'pending',
         approved: false,
         address: {
@@ -67,7 +73,7 @@ export const RegisterClinic = () => {
           number: formData.number,
           city: formData.city,
           state: formData.state,
-          zipCode: formData.zipCode,
+          zipCode: cepInput.formattedValue,
           neighborhood: formData.neighborhood
         },
         procedures: finalProcedures,
@@ -138,28 +144,33 @@ export const RegisterClinic = () => {
                     <h5 className="font-serif text-olive mb-3">Dados da Empresa</h5>
                     <Row>
                       <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label className="fw-medium">Razão Social *</Form.Label>
-                          <Form.Control
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            className="rounded-pill"
-                            required
-                          />
-                        </Form.Group>
-                      </Col>
+                                              <Form.Group className="mb-3">
+                                                <Form.Label className="fw-medium">Razão Social *</Form.Label>
+                                                <Form.Control
+                                                  type="text"
+                                                  value={formData.name}
+                                                  onChange={(e) => setFormData({...formData, name: e.target.value.slice(0, 100)})}
+                                                  maxLength={100}
+                                                  className="rounded-pill"
+                                                  required
+                                                />
+                                                <Form.Text className="text-end">0 / 100</Form.Text>
+                                              </Form.Group>
+                                            </Col>
                       <Col md={6}>
                         <Form.Group className="mb-3">
                           <Form.Label className="fw-medium">CNPJ *</Form.Label>
                           <Form.Control
                             type="text"
                             placeholder="00.000.000/0000-00"
-                            value={formData.cnpj}
-                            onChange={(e) => setFormData({...formData, cnpj: e.target.value})}
-                            className="rounded-pill"
+                            value={cnpjInput.formattedValue}
+                            onChange={cnpjInput.handleChange}
+                            onBlur={cnpjInput.handleBlur}
+                            className={`rounded-pill ${cnpjInput.error ? 'is-invalid' : ''}`}
                             required
+                            maxLength={18}
                           />
+                          {cnpjInput.error && <Form.Control.Feedback type="invalid">{cnpjInput.error}</Form.Control.Feedback>}
                         </Form.Group>
                       </Col>
                     </Row>
@@ -171,7 +182,8 @@ export const RegisterClinic = () => {
                             type="email"
                             placeholder="contato@clinica.com"
                             value={formData.email}
-                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            onChange={(e) => setFormData({...formData, email: e.target.value.toLowerCase()})}
+                            maxLength={254}
                             className="rounded-pill"
                             required
                           />
@@ -183,11 +195,14 @@ export const RegisterClinic = () => {
                           <Form.Control
                             type="tel"
                             placeholder="(11) 99999-9999"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                            className="rounded-pill"
+                            value={phoneInput.formattedValue}
+                            onChange={phoneInput.handleChange}
+                            onBlur={phoneInput.handleBlur}
+                            className={`rounded-pill ${phoneInput.error ? 'is-invalid' : ''}`}
                             required
+                            maxLength={15}
                           />
+                          {phoneInput.error && <Form.Control.Feedback type="invalid">{phoneInput.error}</Form.Control.Feedback>}
                         </Form.Group>
                       </Col>
                     </Row>
@@ -200,10 +215,12 @@ export const RegisterClinic = () => {
                             placeholder="Mínimo 6 caracteres"
                             value={formData.password}
                             onChange={(e) => setFormData({...formData, password: e.target.value})}
+                            maxLength={128}
                             className="rounded-pill"
                             required
                             minLength={6}
                           />
+                          <Form.Text>Mínimo 6 caracteres</Form.Text>
                         </Form.Group>
                       </Col>
                       <Col md={6}>
@@ -214,6 +231,7 @@ export const RegisterClinic = () => {
                             placeholder="Repita a senha"
                             value={formData.confirmPassword}
                             onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                            maxLength={128}
                             className="rounded-pill"
                             required
                           />
@@ -233,7 +251,8 @@ export const RegisterClinic = () => {
                           <Form.Control
                             type="text"
                             value={formData.street}
-                            onChange={(e) => setFormData({...formData, street: e.target.value})}
+                            onChange={(e) => setFormData({...formData, street: e.target.value.slice(0, 100)})}
+                            maxLength={100}
                             className="rounded-pill"
                             required
                           />
@@ -245,7 +264,8 @@ export const RegisterClinic = () => {
                           <Form.Control
                             type="text"
                             value={formData.number}
-                            onChange={(e) => setFormData({...formData, number: e.target.value})}
+                            onChange={(e) => setFormData({...formData, number: e.target.value.slice(0, 10)})}
+                            maxLength={10}
                             className="rounded-pill"
                             required
                           />
@@ -259,35 +279,40 @@ export const RegisterClinic = () => {
                           <Form.Control
                             type="text"
                             value={formData.neighborhood}
-                            onChange={(e) => setFormData({...formData, neighborhood: e.target.value})}
+                            onChange={(e) => setFormData({...formData, neighborhood: e.target.value.slice(0, 50)})}
+                            maxLength={50}
                             className="rounded-pill"
                             required
                           />
                         </Form.Group>
                       </Col>
                       <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label className="fw-medium">CEP</Form.Label>
-                          <Form.Control
-                            type="text"
-                            placeholder="00000-000"
-                            value={formData.zipCode}
-                            onChange={(e) => setFormData({...formData, zipCode: e.target.value})}
-                            className="rounded-pill"
-                          />
-                        </Form.Group>
-                      </Col>
+                                              <Form.Group className="mb-3">
+                                                <Form.Label className="fw-medium">CEP</Form.Label>
+                                                <Form.Control
+                                                  type="text"
+                                                  placeholder="00000-000"
+                                                  value={cepInput.formattedValue}
+                                                  onChange={cepInput.handleChange}
+                                                  onBlur={cepInput.handleBlur}
+                                                  className={`rounded-pill ${cepInput.error ? 'is-invalid' : ''}`}
+                                                  maxLength={9}
+                                                />
+                                                {cepInput.error && <Form.Control.Feedback type="invalid">{cepInput.error}</Form.Control.Feedback>}
+                                              </Form.Group>
+                                            </Col>
                     </Row>
                     <Row>
                       <Col md={6}>
-                        <Form.Group className="mb-3">
-                          <Form.Label className="fw-medium">Cidade *</Form.Label>
-                          <Form.Control
-                            type="text"
-                            value={formData.city}
-                            onChange={(e) => setFormData({...formData, city: e.target.value})}
-                            className="rounded-pill"
-                            required
+                                              <Form.Group className="mb-3">
+                                                <Form.Label className="fw-medium">Cidade *</Form.Label>
+                                                <Form.Control
+                                                  type="text"
+                                                  value={formData.city}
+                                                  onChange={(e) => setFormData({...formData, city: e.target.value.slice(0, 50)})}
+                                                  maxLength={50}
+                                                  className="rounded-pill"
+                                                  required
                           />
                         </Form.Group>
                       </Col>
@@ -321,10 +346,12 @@ export const RegisterClinic = () => {
                         rows={3}
                         placeholder="Descreva sua clínica, diferenciais, experiência..."
                         value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        onChange={(e) => setFormData({...formData, description: e.target.value.slice(0, 500)})}
+                        maxLength={500}
                         className="rounded-4"
                         required
                       />
+                      <Form.Text className="text-end">0 / 500</Form.Text>
                     </Form.Group>
                     
                     <Form.Group className="mb-3">
@@ -352,7 +379,8 @@ export const RegisterClinic = () => {
                           type="text"
                           placeholder="Ex: Radiofrequência, Drenagem Linfática..."
                           value={formData.otherProcedure}
-                          onChange={(e) => setFormData({...formData, otherProcedure: e.target.value})}
+                          onChange={(e) => setFormData({...formData, otherProcedure: e.target.value.slice(0, 100)})}
+                          maxLength={100}
                           className="rounded-pill"
                           required
                         />

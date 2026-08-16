@@ -487,7 +487,8 @@ export const DashboardClient = () => {
               )}
               <Form.Group>
                 <Form.Label className="fw-medium">Motivo (opcional)</Form.Label>
-                <Form.Control as="textarea" rows={3} value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="rounded-4" placeholder="Por que deseja cancelar?" />
+                <Form.Control as="textarea" rows={3} value={cancelReason} onChange={e => setCancelReason(e.target.value.slice(0, 500))} maxLength={500} className="rounded-4" placeholder="Por que deseja cancelar?" />
+                <Form.Text className="text-end">0 / 500</Form.Text>
               </Form.Group>
             </>
           )}
@@ -561,7 +562,8 @@ export const DashboardClient = () => {
           </Form.Group>
           <Form.Group>
             <Form.Label className="fw-medium">Comentário</Form.Label>
-            <Form.Control as="textarea" rows={3} value={editComment} onChange={e => setEditComment(e.target.value)} className="rounded-4" />
+            <Form.Control as="textarea" rows={3} value={editComment} onChange={e => setEditComment(e.target.value.slice(0, 500))} maxLength={500} className="rounded-4" placeholder="Conte sua experiência..." />
+            <Form.Text className="text-end">0 / 500</Form.Text>
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>

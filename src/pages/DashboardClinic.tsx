@@ -14,6 +14,7 @@ import { useClinicSchedule, useUpdateSchedule, generateTimeSlots } from '../hook
 import { DaySchedule } from '../components/DaySchedule';
 import { BlogPostModal } from '../components/BlogPostModal';
 import type { Appointment, ClinicSchedule } from '../types';
+import { usePhoneInput } from '../utils/brasil';
 
 export const DashboardClinic = () => {
   const { user } = useAuth();
@@ -30,6 +31,7 @@ export const DashboardClinic = () => {
   const [editPhone, setEditPhone] = useState('');
   const [editProcedures, setEditProcedures] = useState<string[]>([]);
   const [editSuccess, setEditSuccess] = useState(false);
+  const phoneInput = usePhoneInput();
   const { professionals, loading: profLoading, refetch: refetchProfs } = useProfessionalsByClinic(clinicId);
   const { createProfessional, creating } = useCreateProfessional();
   const { updateProfessional, updating } = useUpdateProfessional();
@@ -160,6 +162,7 @@ export const DashboardClinic = () => {
   const openEditModal = () => {
     setEditDescription(clinic?.description || '');
     setEditPhone(clinic?.phone || '');
+    phoneInput.setValue(clinic?.phone || '');
     setEditProcedures(clinic?.procedures || []);
     setShowEditModal(true);
   };
@@ -483,10 +486,17 @@ export const DashboardClinic = () => {
               <Form.Label className="fw-medium">Telefone</Form.Label>
               <Form.Control
                 type="text"
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                className="rounded-pill"
+                placeholder="(11) 99999-9999"
+                value={phoneInput.formattedValue}
+                onChange={phoneInput.handleChange}
+                onBlur={() => {
+                  phoneInput.handleBlur();
+                  setEditPhone(phoneInput.formattedValue);
+                }}
+                className={`rounded-pill ${phoneInput.error ? 'is-invalid' : ''}`}
+                maxLength={15}
               />
+              {phoneInput.error && <Form.Control.Feedback type="invalid">{phoneInput.error}</Form.Control.Feedback>}
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">Procedimentos</Form.Label>
@@ -523,21 +533,22 @@ export const DashboardClinic = () => {
           <Form>
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">Nome</Form.Label>
-              <Form.Control type="text" value={profName} onChange={e => setProfName(e.target.value)} className="rounded-pill" />
+              <Form.Control type="text" value={profName} onChange={e => setProfName(e.target.value.slice(0, 100))} maxLength={100} className="rounded-pill" />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">E-mail (usado para login)</Form.Label>
-              <Form.Control type="email" value={profEmail} onChange={e => setProfEmail(e.target.value)} className="rounded-pill" disabled={!!editingProfId} />
+              <Form.Control type="email" value={profEmail} onChange={e => setProfEmail(e.target.value.toLowerCase())} maxLength={254} className="rounded-pill" disabled={!!editingProfId} />
             </Form.Group>
             {!editingProfId && (
               <Form.Group className="mb-3">
                 <Form.Label className="fw-medium">Senha</Form.Label>
-                <Form.Control type="password" value={profPassword} onChange={e => setProfPassword(e.target.value)} className="rounded-pill" placeholder="••••••••" />
+                <Form.Control type="password" value={profPassword} onChange={e => setProfPassword(e.target.value)} maxLength={128} className="rounded-pill" placeholder="••••••••" />
               </Form.Group>
             )}
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">Bio</Form.Label>
-              <Form.Control as="textarea" rows={3} value={profBio} onChange={e => setProfBio(e.target.value)} className="rounded-4" />
+              <Form.Control as="textarea" rows={3} value={profBio} onChange={e => setProfBio(e.target.value.slice(0, 500))} maxLength={500} className="rounded-4" />
+              <Form.Text className="text-end">0 / 500</Form.Text>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label className="fw-medium">Procedimentos</Form.Label>
@@ -643,11 +654,12 @@ export const DashboardClinic = () => {
                   <Form.Control
                     type="number"
                     min={1}
+                    max={168}
                     value={editCancelPolicy.minHoursBeforeCancel}
-                    onChange={e => setEditCancelPolicy(prev => ({ ...prev, minHoursBeforeCancel: Number(e.target.value) }))}
+                    onChange={e => setEditCancelPolicy(prev => ({ ...prev, minHoursBeforeCancel: Math.min(168, Math.max(1, Number(e.target.value) || 0)) }))}
                     className="rounded-pill"
                   />
-                  <Form.Text className="text-muted">Cliente não pode cancelar se faltar menos que isso para o horário.</Form.Text>
+                  <Form.Text className="text-muted">Cliente não pode cancelar se faltar menos que isso para o horário (máx. 168h = 7 dias).</Form.Text>
                 </Form.Group>
                 <div className="mb-3">
                   <Form.Check

@@ -15,21 +15,36 @@ export const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      return setError('As senhas não coincidem');
-    }
-    if (!agreeTerms) {
-      return setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
-    }
+    setError('');
+
+    // Validation
+    if (!name.trim()) { setError('Nome é obrigatório.'); return; }
+    if (name.trim().length > 100) { setError('Nome muito longo (máx. 100 caracteres).'); return; }
+    if (!email.trim()) { setError('E-mail é obrigatório.'); return; }
+    if (!validateEmail(email)) { setError('E-mail inválido.'); return; }
+    if (password.length < 6) { setError('A senha deve ter no mínimo 6 caracteres.'); return; }
+    if (password.length > 128) { setError('A senha é muito longa (máx. 128 caracteres).'); return; }
+    if (password !== confirmPassword) { setError('As senhas não coincidem'); return; }
+    if (!agreeTerms) { setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade.'); return; }
+
     try {
-      setError('');
       setLoading(true);
-      await register(email, password, name, 'client');
+      await register(email.trim().toLowerCase(), password, name.trim(), 'client');
       navigate('/verify-email');
-    } catch (err) {
-      setError('Erro ao criar conta. Tente novamente.');
+    } catch (err: any) {
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Este e-mail já está cadastrado. Tente fazer login.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('E-mail inválido.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('A senha é muito fraca. Use pelo menos 6 caracteres.');
+      } else {
+        setError('Erro ao criar conta. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -39,28 +54,31 @@ export const Register = () => {
     <Container className="py-5 mt-5">
       <SEO title="Criar Conta" description="Crie sua conta na Magnolia Royale e encontre as melhores clínicas de estética." url="https://magnoliaroyale.com.br/register" />
       <Row className="justify-content-center">
-        <Col md={5}>
-          <Card className="border-0 shadow-sm">
-            <Card.Body className="p-5">
+        <Col md={5} lg={4}>
+          <Card className="border-0 shadow-sm card-premium">
+            <Card.Body className="p-4 p-md-5">
               <div className="text-center mb-4">
-                <i className="bi bi-person-heart text-olive fs-1"></i>
-                <h2 className="font-serif fw-bold text-olive mt-2">Criar Conta</h2>
-                <p className="text-muted">Junte-se à Magnolia Royale</p>
+                <i className="bi bi-person-heart text-olive" style={{ fontSize: '3rem' }}></i>
+                <h2 className="font-serif fw-bold text-olive mt-3">Criar Conta</h2>
+                <p className="text-muted mt-2">Junte-se à Magnolia Royale e descubra clínicas premium</p>
               </div>
 
-              {error && <Alert variant="danger" className="rounded-4">{error}</Alert>}
+              {error && <Alert variant="danger" className="rounded-4 mb-4">{error}</Alert>}
 
-              <Form onSubmit={handleSubmit}>
+              <Form onSubmit={handleSubmit} noValidate>
                 <Form.Group className="mb-3">
-                  <Form.Label className="fw-medium">Nome Completo</Form.Label>
+                  <Form.Label className="fw-medium">Nome completo</Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="Seu nome"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="rounded-pill"
+                    onChange={(e) => setName(e.target.value.slice(0, 100))}
+                    maxLength={100}
+                    className="rounded-pill form-control-premium"
                     required
+                    autoComplete="name"
                   />
+                  <Form.Text className="text-end">0 / 100</Form.Text>
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -69,9 +87,11 @@ export const Register = () => {
                     type="email"
                     placeholder="seu@email.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="rounded-pill"
+                    onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                    maxLength={254}
+                    className="rounded-pill form-control-premium"
                     required
+                    autoComplete="email"
                   />
                 </Form.Group>
 
@@ -82,59 +102,61 @@ export const Register = () => {
                     placeholder="Mínimo 6 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="rounded-pill"
+                    maxLength={128}
+                    className="rounded-pill form-control-premium"
                     required
-                    minLength={6}
+                    autoComplete="new-password"
                   />
+                  <Form.Text>Mínimo 6 caracteres</Form.Text>
                 </Form.Group>
 
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-medium">Confirmar Senha</Form.Label>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-medium">Confirmar senha</Form.Label>
                   <Form.Control
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="Confirme sua senha"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="rounded-pill"
+                    maxLength={128}
+                    className="rounded-pill form-control-premium"
                     required
+                    autoComplete="new-password"
                   />
                 </Form.Group>
 
-                <Form.Check
-                  type="checkbox"
-                  id="agreeTerms"
-                  className="mb-3"
-                  label={
-                    <span className="small">
-                      Aceito os <Link to="/termos" target="_blank" className="text-gold">Termos de Uso</Link> e a{' '}
-                      <Link to="/privacidade" target="_blank" className="text-gold">Política de Privacidade</Link>
-                    </span>
-                  }
-                  checked={agreeTerms}
-                  onChange={e => setAgreeTerms(e.target.checked)}
-                  required
-                />
+                <Form.Check className="mb-4">
+                  <Form.Check.Input
+                    type="checkbox"
+                    id="agreeTerms"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
+                    className="form-check-input rounded"
+                  />
+                  <Form.Check.Label className="text-muted small" htmlFor="agreeTerms">
+                    Concordo com os <Link to="/termos-de-uso" className="text-olive text-decoration-none">Termos de Uso</Link> e a <Link to="/politica-de-privacidade" className="text-olive text-decoration-none">Política de Privacidade</Link>
+                  </Form.Check.Label>
+                </Form.Check>
 
                 <Button
+                  variant="gold"
                   type="submit"
-                  variant="olive"
-                  className="w-100 rounded-pill py-2"
+                  className="w-100 rounded-pill btn-lg mb-3"
                   disabled={loading}
                 >
                   {loading ? (
-                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Criando conta...
+                    </>
                   ) : (
-                    <i className="bi bi-person-plus me-2"></i>
+                    'Criar Conta'
                   )}
-                  Criar Conta
                 </Button>
-              </Form>
 
-              <div className="text-center mt-3">
-                <Link to="/login" className="text-decoration-none text-muted small">
-                  Já tem uma conta? Entre aqui
-                </Link>
-              </div>
+                <p className="text-center text-muted small mb-0">
+                  Já tem conta? <Link to="/login" className="text-olive text-decoration-none fw-medium">Entrar</Link>
+                </p>
+              </Form>
             </Card.Body>
           </Card>
         </Col>

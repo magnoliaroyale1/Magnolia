@@ -142,7 +142,9 @@ export const AdminChat = () => {
                     type="text"
                     placeholder="Digite sua resposta..."
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={(e) => setNewMessage(e.target.value.slice(0, 1000))}
+                    maxLength={1000}
+                    autoComplete="off"
                     className="rounded-pill"
                   />
                   <Button variant="olive" type="submit" className="rounded-pill px-4" disabled={!newMessage.trim()}>

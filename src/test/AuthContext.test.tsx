@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 // ========================================
 // Firebase mocks (hoisted before imports)
@@ -28,7 +28,7 @@ const {
   mockGetDoc: vi.fn(),
   mockSetDoc: vi.fn(),
   mockUpdateDoc: vi.fn(),
-  mockDoc: vi.fn((_db: any, path: string, ...segments: string[]) => ({
+  mockDoc: vi.fn((_db: unknown, path: string, ...segments: string[]) => ({
     path: segments.length > 0 ? `${path}/${segments.join('/')}` : path,
     _db,
   })),
@@ -37,21 +37,21 @@ const {
 
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(() => ({})),
-  createUserWithEmailAndPassword: (...args: any[]) => mockCreateUserWithEmailAndPassword(...args),
-  signInWithEmailAndPassword: (...args: any[]) => mockSignInWithEmailAndPassword(...args),
-  signOut: (...args: any[]) => mockSignOut(...args),
-  onAuthStateChanged: (...args: any[]) => mockOnAuthStateChanged(...args),
-  sendEmailVerification: (...args: any[]) => mockSendEmailVerification(...args),
-  updateProfile: (...args: any[]) => mockUpdateProfile(...args),
+  createUserWithEmailAndPassword: mockCreateUserWithEmailAndPassword,
+  signInWithEmailAndPassword: mockSignInWithEmailAndPassword,
+  signOut: mockSignOut,
+  onAuthStateChanged: mockOnAuthStateChanged,
+  sendEmailVerification: mockSendEmailVerification,
+  updateProfile: mockUpdateProfile,
 }))
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
-  collection: vi.fn((_db: any, path: string) => ({ path })),
-  doc: (...args: any[]) => mockDoc(...args),
-  getDoc: (...args: any[]) => mockGetDoc(...args),
-  setDoc: (...args: any[]) => mockSetDoc(...args),
-  updateDoc: (...args: any[]) => mockUpdateDoc(...args),
+  collection: vi.fn((_db: unknown, path: string) => ({ path })),
+  doc: mockDoc,
+  getDoc: mockGetDoc,
+  setDoc: mockSetDoc,
+  updateDoc: mockUpdateDoc,
   Timestamp: mockTimestamp,
 }))
 
@@ -73,7 +73,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockOnAuthStateChanged.mockImplementation((_auth: any, cb: (u: any) => void) => {
+    mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
       cb(null)
       return vi.fn()
     })
@@ -131,7 +131,7 @@ describe('AuthContext', () => {
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
-      let user: any
+      let user: unknown
       await act(async () => {
         user = await result.current.login('user@test.com', 'senha123')
       })
@@ -194,7 +194,7 @@ describe('AuthContext', () => {
         data: () => ({ uid: 'uid-1', role: 'client', emailVerified: false }),
       })
 
-      mockOnAuthStateChanged.mockImplementation((_auth: any, cb: (u: any) => void) => {
+      mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
         cb(fakeUser)
         return vi.fn()
       })
@@ -214,7 +214,7 @@ describe('AuthContext', () => {
 
       mockGetDoc.mockResolvedValue({ exists: () => false })
 
-      mockOnAuthStateChanged.mockImplementation((_auth: any, cb: (u: any) => void) => {
+      mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
         cb(fakeUser)
         return vi.fn()
       })
@@ -255,7 +255,7 @@ describe('AuthContext', () => {
           data: () => ({ uid: `uid-${role}`, role, emailVerified: true }),
         })
 
-        mockOnAuthStateChanged.mockImplementation((_auth: any, cb: (u: any) => void) => {
+        mockOnAuthStateChanged.mockImplementation((_auth: unknown, cb: (u: unknown) => void) => {
           cb(fakeUser)
           return vi.fn()
         })
@@ -266,7 +266,7 @@ describe('AuthContext', () => {
           expect(result.current.user?.role).toBe(role)
         })
 
-        expect((result.current as any)[flag]).toBe(true)
+        expect((result.current as unknown as Record<string, unknown>)[flag]).toBe(true)
       })
     })
   })

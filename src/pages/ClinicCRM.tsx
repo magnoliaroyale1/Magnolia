@@ -34,7 +34,8 @@ export const ClinicCRM = () => {
         type="text"
         placeholder="Buscar por nome ou email..."
         value={search}
-        onChange={e => setSearch(e.target.value)}
+        onChange={e => setSearch(e.target.value.slice(0, 100))}
+        maxLength={100}
         className="rounded-pill mb-4"
       />
 

@@ -15,31 +15,31 @@ const {
   mockGetDocs: vi.fn(),
   mockAddDoc: vi.fn(),
   mockUpdateDoc: vi.fn(),
-  mockDoc: vi.fn((_db: any, path: string, ...segments: string[]) => ({
+  mockDoc: vi.fn((_db: unknown, path: string, ...segments: string[]) => ({
     path: segments.length > 0 ? `${path}/${segments.join('/')}` : path,
     _db,
   })),
-  mockCollection: vi.fn((_db: any, path: string, ...segments: string[]) => ({
+  mockCollection: vi.fn((_db: unknown, path: string, ...segments: string[]) => ({
     path: segments.length > 0 ? `${path}/${segments.join('/')}` : path,
     _db,
   })),
-  mockQuery: vi.fn((...args: any[]) => ({ type: 'query', args })),
-  mockWhere: vi.fn((field: string, op: string, value: any) => ({ type: 'where', field, op, value })),
+  mockQuery: vi.fn((...args: unknown[]) => ({ type: 'query', args })),
+  mockWhere: vi.fn((field: string, op: string, value: unknown) => ({ type: 'where', field, op, value })),
   mockOrderBy: vi.fn((field: string, dir?: string) => ({ type: 'orderBy', field, dir })),
   mockLimit: vi.fn((n: number) => ({ type: 'limit', n })),
 }))
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
-  collection: (...args: any[]) => mockCollection(...args),
-  doc: (...args: any[]) => mockDoc(...args),
-  query: (...args: any[]) => mockQuery(...args),
-  where: (...args: any[]) => mockWhere(...args),
-  orderBy: (...args: any[]) => mockOrderBy(...args),
-  limit: (...args: any[]) => mockLimit(...args),
-  getDocs: (...args: any[]) => mockGetDocs(...args),
-  addDoc: (...args: any[]) => mockAddDoc(...args),
-  updateDoc: (...args: any[]) => mockUpdateDoc(...args),
+  collection: mockCollection,
+  doc: mockDoc,
+  query: mockQuery,
+  where: mockWhere,
+  orderBy: mockOrderBy,
+  limit: mockLimit,
+  getDocs: mockGetDocs,
+  addDoc: mockAddDoc,
+  updateDoc: mockUpdateDoc,
   Timestamp: { now: vi.fn(() => ({ seconds: 1000, nanoseconds: 0 })) },
 }))
 
@@ -62,7 +62,6 @@ const makeAppointment = (overrides = {}) => ({
   id: 'apt-1',
   clinicId: 'clinic-1',
   clientId: 'client-1',
-  clientName: 'João',
   procedure: 'Limpeza',
   date: '2026-07-01',
   time: '10:00',

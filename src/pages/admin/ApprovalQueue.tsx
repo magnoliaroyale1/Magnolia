@@ -150,7 +150,8 @@ export const ApprovalQueue = () => {
               as="textarea"
               rows={4}
               value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
+              onChange={(e) => setFeedback(e.target.value.slice(0, 2000))}
+              maxLength={2000}
               className="rounded-4"
               placeholder={
                 actionType === 'reject'
@@ -160,6 +161,7 @@ export const ApprovalQueue = () => {
                     : 'Mensagem opcional de boas-vindas...'
               }
             />
+            <Form.Text className="text-end">0 / 2000</Form.Text>
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>

@@ -18,12 +18,20 @@ export const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    if (!email.trim()) { setError('E-mail é obrigatório.'); return; }
+    if (!validateEmail(email)) { setError('E-mail inválido.'); return; }
+    if (!password) { setError('Senha é obrigatória.'); return; }
+    if (password.length > 128) { setError('Senha muito longa.'); return; }
+
     try {
-      setError('');
       setLoading(true);
-      const firebaseUser = await login(email, password);
+      const firebaseUser = await login(email.trim().toLowerCase(), password);
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
 
       if (userDoc.exists()) {
@@ -39,106 +47,146 @@ export const Login = () => {
       const messages: Record<string, string> = {
         'auth/invalid-credential': 'E-mail ou senha inválidos.',
         'auth/invalid-email': 'E-mail inválido.',
-        'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.'
+        'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
+        'auth/user-not-found': 'Usuário não encontrado.',
+        'auth/wrong-password': 'Senha incorreta.',
       };
-      setError(messages[err.code] || 'E-mail ou senha inválidos.');
+      setError(messages[err.code] || 'Erro ao fazer login. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!resetEmail.trim() || !validateEmail(resetEmail)) {
+      setError('E-mail válido é obrigatório.');
+      return;
+    }
     try {
-      await sendPasswordResetEmail(auth, resetEmail);
-      setResetSent(true);
       setError('');
-    } catch (err: any) {
-      setError('Erro ao enviar e-mail de redefinição. Verifique o e-mail informado.');
+      await sendPasswordResetEmail(auth, resetEmail.trim().toLowerCase());
+      setResetSent(true);
+      setResetEmail('');
+    } catch {
+      setError('Erro ao enviar e-mail de recuperação. Tente novamente.');
     }
   };
 
   return (
     <Container className="py-5 mt-5">
-      <SEO title="Entrar" description="Entre na sua conta Magnolia Royale." url="https://magnoliaroyale.com.br/login" />
+      <SEO title="Entrar" description="Acesse sua conta na Magnolia Royale" url="https://magnoliaroyale.com.br/login" />
       <Row className="justify-content-center">
-        <Col md={5}>
-          <Card className="border-0 shadow-sm">
-            <Card.Body className="p-5">
+        <Col md={5} lg={4}>
+          <Card className="border-0 shadow-sm card-premium">
+            <Card.Body className="p-4 p-md-5">
               <div className="text-center mb-4">
-                <i className="bi bi-flower2 text-olive fs-1"></i>
-                <h3 className="font-serif fw-bold text-olive mt-2">Bem-vindo de volta</h3>
-                <p className="text-muted">Entre na sua conta Magnolia Royale</p>
+                <i className="bi bi-box-arrow-in-right text-olive" style={{ fontSize: '3rem' }}></i>
+                <h2 className="font-serif fw-bold text-olive mt-3">Entrar</h2>
+                <p className="text-muted mt-2">Acesse sua conta para continuar</p>
               </div>
 
-              {error && <Alert variant="danger" className="rounded-4">{error}</Alert>}
-              {resetSent && <Alert variant="success" className="rounded-4">E-mail de redefinição enviado! Verifique sua caixa de entrada.</Alert>}
+              {!showReset ? (
+                <>
+                  {error && <Alert variant="danger" className="rounded-4 mb-4">{error}</Alert>}
 
-              {showReset ? (
-                <Form onSubmit={handleResetPassword}>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-medium">E-mail</Form.Label>
-                    <Form.Control
-                      type="email"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      className="rounded-pill"
-                      placeholder="seu@email.com"
-                      required
-                    />
-                  </Form.Group>
-                  <Button variant="olive" type="submit" className="w-100 rounded-pill py-2">
-                    Enviar Redefinição
-                  </Button>
-                  <div className="text-center mt-3">
-                    <Button variant="link" className="text-decoration-none" onClick={() => { setShowReset(false); setResetSent(false); }}>
-                      Voltar ao login
-                    </Button>
-                  </div>
-                </Form>
-              ) : (
-                <Form onSubmit={handleSubmit}>
-                  <Form.Group className="mb-3">
-                    <Form.Label className="fw-medium">E-mail</Form.Label>
-                    <Form.Control
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="rounded-pill"
-                      placeholder="seu@email.com"
-                      required
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-4">
-                    <div className="d-flex justify-content-between">
-                      <Form.Label className="fw-medium">Senha</Form.Label>
-                      <Button variant="link" className="p-0 text-decoration-none small" onClick={() => setShowReset(true)}>
-                        Esqueceu a senha?
-                      </Button>
-                    </div>
+                  <Form onSubmit={handleSubmit} noValidate>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-medium">E-mail</Form.Label>
+                      <Form.Control
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                        maxLength={254}
+                        className="rounded-pill form-control-premium"
+                        required
+                        autoComplete="email"
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-3 d-flex justify-content-between align-items-center">
+                      <Form.Label className="fw-medium mb-0">Senha</Form.Label>
+                      <Link to="#" className="text-olive small text-decoration-none" onClick={(e) => { e.preventDefault(); setShowReset(true); }}>
+                        Esqueci a senha
+                      </Link>
+                    </Form.Group>
                     <Form.Control
                       type="password"
+                      placeholder="Sua senha"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="rounded-pill"
-                      placeholder="••••••••"
+                      maxLength={128}
+                      className="rounded-pill form-control-premium mb-3"
                       required
+                      autoComplete="current-password"
                     />
-                  </Form.Group>
-                  <Button variant="gold" type="submit" className="w-100 rounded-pill py-2" disabled={loading}>
-                    {loading ? 'Entrando...' : 'Entrar'}
-                  </Button>
-                </Form>
-              )}
 
-              <div className="text-center mt-4">
-                <p className="text-muted mb-2">
-                  <Link to="/register" className="text-gold text-decoration-none">Criar conta de cliente</Link>
-                </p>
-                <p className="text-muted mb-0">
-                  <Link to="/register-clinic" className="text-olive text-decoration-none">Cadastrar minha clínica</Link>
-                </p>
-              </div>
+                    <Button
+                      variant="gold"
+                      type="submit"
+                      className="w-100 rounded-pill btn-lg mb-3"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Entrando...
+                        </>
+                      ) : (
+                        'Entrar'
+                      )}
+                    </Button>
+
+                    <p className="text-center text-muted small mb-0">
+                      Não tem conta? <Link to="/register" className="text-olive text-decoration-none fw-medium">Criar conta</Link>
+                    </p>
+                  </Form>
+                </>
+              ) : (
+                <>
+                  <div className="text-center mb-4">
+                    <i className="bi bi-envelope-arrow-up text-olive" style={{ fontSize: '3rem' }}></i>
+                    <h5 className="font-serif fw-bold text-olive mt-3">Recuperar Senha</h5>
+                    <p className="text-muted mt-2">Digite seu e-mail para receber o link de recuperação</p>
+                  </div>
+
+                  {error && <Alert variant="danger" className="rounded-4 mb-4">{error}</Alert>}
+                  {resetSent && <Alert variant="success" className="rounded-4 mb-4">E-mail de recuperação enviado! Verifique sua caixa de entrada.</Alert>}
+
+                  <Form onSubmit={handleResetRequest} noValidate>
+                    <Form.Group className="mb-4">
+                      <Form.Label className="fw-medium">E-mail</Form.Label>
+                      <Form.Control
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value.toLowerCase())}
+                        maxLength={254}
+                        className="rounded-pill form-control-premium"
+                        required
+                        autoComplete="email"
+                      />
+                    </Form.Group>
+
+                    <Button
+                      variant="gold"
+                      type="submit"
+                      className="w-100 rounded-pill btn-lg mb-3"
+                    >
+                      Enviar Link de Recuperação
+                    </Button>
+
+                    <Button
+                      variant="link"
+                      className="w-100 text-olive fw-medium"
+                      onClick={() => { setShowReset(false); setError(''); }}
+                    >
+                      <i className="bi bi-arrow-left me-1"></i>Voltar ao Login
+                    </Button>
+                  </Form>
+                </>
+              )}
             </Card.Body>
           </Card>
         </Col>

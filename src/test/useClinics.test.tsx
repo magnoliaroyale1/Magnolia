@@ -10,21 +10,21 @@ const {
   mockLimit,
 } = vi.hoisted(() => ({
   mockGetDocs: vi.fn(),
-  mockCollection: vi.fn((_db: any, path: string) => ({ path })),
-  mockQuery: vi.fn((...args: any[]) => ({ type: 'query', args })),
-  mockWhere: vi.fn((field: string, op: string, value: any) => ({ type: 'where', field, op, value })),
+  mockCollection: vi.fn((_db: unknown, path: string) => ({ path })),
+  mockQuery: vi.fn((...args: unknown[]) => ({ type: 'query', args })),
+  mockWhere: vi.fn((field: string, op: string, value: unknown) => ({ type: 'where', field, op, value })),
   mockOrderBy: vi.fn((field: string, dir?: string) => ({ type: 'orderBy', field, dir })),
   mockLimit: vi.fn((n: number) => ({ type: 'limit', n })),
 }))
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
-  collection: (...args: any[]) => mockCollection(...args),
-  query: (...args: any[]) => mockQuery(...args),
-  where: (...args: any[]) => mockWhere(...args),
-  orderBy: (...args: any[]) => mockOrderBy(...args),
-  limit: (...args: any[]) => mockLimit(...args),
-  getDocs: (...args: any[]) => mockGetDocs(...args),
+  collection: mockCollection,
+  query: mockQuery,
+  where: mockWhere,
+  orderBy: mockOrderBy,
+  limit: mockLimit,
+  getDocs: mockGetDocs,
   Timestamp: { now: vi.fn(() => ({ seconds: 1000, nanoseconds: 0 })) },
 }))
 

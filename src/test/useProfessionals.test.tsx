@@ -19,23 +19,23 @@ const {
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
-  collection: vi.fn((_db: any, path: string) => ({ path })),
-  doc: vi.fn((_db: any, path: string, ...segments: string[]) => ({
+  collection: vi.fn((_db: unknown, path: string) => ({ path })),
+  doc: vi.fn((_db: unknown, path: string, ...segments: string[]) => ({
     path: segments.length > 0 ? `${path}/${segments.join('/')}` : path,
   })),
-  query: vi.fn((...args: any[]) => ({ type: 'query', args })),
-  where: vi.fn((field: string, op: string, value: any) => ({ type: 'where', field, op, value })),
+  query: vi.fn((...args: unknown[]) => ({ type: 'query', args })),
+  where: vi.fn((field: string, op: string, value: unknown) => ({ type: 'where', field, op, value })),
   orderBy: vi.fn((field: string, dir?: string) => ({ type: 'orderBy', field, dir })),
-  getDocs: (...args: any[]) => mockGetDocs(...args),
-  addDoc: (...args: any[]) => mockAddDoc(...args),
-  updateDoc: (...args: any[]) => mockUpdateDoc(...args),
-  deleteDoc: (...args: any[]) => mockDeleteDoc(...args),
+  getDocs: mockGetDocs,
+  addDoc: mockAddDoc,
+  updateDoc: mockUpdateDoc,
+  deleteDoc: mockDeleteDoc,
   Timestamp: { now: vi.fn(() => ({ seconds: 1000, nanoseconds: 0 })) },
 }))
 
 vi.mock('firebase/functions', () => ({
-  getFunctions: (...args: any[]) => mockGetFunctions(...args),
-  httpsCallable: (...args: any[]) => mockHttpsCallable(...args),
+  getFunctions: mockGetFunctions,
+  httpsCallable: mockHttpsCallable,
 }))
 
 vi.mock('../services/firebase', () => ({

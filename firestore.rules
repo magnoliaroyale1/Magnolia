@@ -239,11 +239,15 @@ service cloud.firestore {
     // ==========================================
     match /contacts/{contactId} {
       allow read: if isAdmin();
-      // TODO: em produção, mover para uma Callable Function com reCAPTCHA+rate limiting
-      allow create: if isAuthenticated()
-        && request.resource.data.name is string
+      // Public contact form: allow unauthenticated create with validation
+      // Rate limiting is enforced via Cloud Function (createContact) in production
+      allow create: if request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
         && request.resource.data.email is string
-        && request.resource.data.message is string;
+        && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 5000
+        && !request.resource.data.keys().hasAny(['replied', 'createdAt', 'ip', 'userAgent']);
       allow update, delete: if isAdmin();
     }
   }

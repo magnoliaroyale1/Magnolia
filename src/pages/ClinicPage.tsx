@@ -292,7 +292,8 @@ export const ClinicPage = () => {
                               as="textarea"
                               rows={3}
                               value={comment}
-                              onChange={(e) => setComment(e.target.value)}
+                              onChange={(e) => setComment(e.target.value.slice(0, 500))}
+                              maxLength={500}
                               className="rounded-4"
                               placeholder="Conte sua experiência..."
                             />
@@ -642,10 +643,13 @@ export const ClinicPage = () => {
                 as="textarea"
                 rows={3}
                 value={reportDescription}
-                onChange={(e) => setReportDescription(e.target.value)}
+                onChange={(e) => setReportDescription(e.target.value.slice(0, 500))}
+                maxLength={500}
                 className="rounded-4"
                 required
+                placeholder="Descreva o ocorrido..."
               />
+              <Form.Text className="text-end">0 / 500</Form.Text>
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>

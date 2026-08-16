@@ -50,15 +50,18 @@ export const BlogPostModal = ({ show, onHide, onSave, initial, saving }: BlogPos
         <Form>
           <Form.Group className="mb-3">
             <Form.Label className="fw-medium">Título</Form.Label>
-            <Form.Control type="text" value={title} onChange={e => setTitle(e.target.value)} className="rounded-pill" placeholder="Título do post" />
+            <Form.Control type="text" value={title} onChange={e => setTitle(e.target.value.slice(0, 150))} maxLength={150} className="rounded-pill" placeholder="Título do post" />
+            <Form.Text className="text-end">0 / 150</Form.Text>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-medium">Resumo</Form.Label>
-            <Form.Control type="text" value={excerpt} onChange={e => setExcerpt(e.target.value)} className="rounded-pill" placeholder="Breve descrição que aparece no card" />
+            <Form.Control type="text" value={excerpt} onChange={e => setExcerpt(e.target.value.slice(0, 300))} maxLength={300} className="rounded-pill" placeholder="Breve descrição que aparece no card" />
+            <Form.Text className="text-end">0 / 300</Form.Text>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-medium">Conteúdo</Form.Label>
-            <Form.Control as="textarea" rows={6} value={content} onChange={e => setContent(e.target.value)} className="rounded-4" placeholder="Escreva o conteúdo do post aqui..." />
+            <Form.Control as="textarea" rows={6} value={content} onChange={e => setContent(e.target.value.slice(0, 10000))} maxLength={10000} className="rounded-4" placeholder="Escreva o conteúdo do post aqui..." />
+            <Form.Text className="text-end">0 / 10000</Form.Text>
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-medium">Categoria</Form.Label>
@@ -68,11 +71,11 @@ export const BlogPostModal = ({ show, onHide, onSave, initial, saving }: BlogPos
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-medium">Tempo de Leitura (minutos)</Form.Label>
-            <Form.Control type="number" min={1} value={readTime} onChange={e => setReadTime(Number(e.target.value))} className="rounded-pill" />
+            <Form.Control type="number" min={1} max={240} value={readTime} onChange={e => setReadTime(Math.min(240, Math.max(1, Number(e.target.value) || 1)))} className="rounded-pill" />
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label className="fw-medium">URL da Imagem</Form.Label>
-            <Form.Control type="text" value={image} onChange={e => setImage(e.target.value)} className="rounded-pill" placeholder="https://..." />
+            <Form.Control type="url" value={image} onChange={e => setImage(e.target.value.slice(0, 1000))} maxLength={1000} className="rounded-pill" placeholder="https://..." />
           </Form.Group>
         </Form>
       </Modal.Body>
